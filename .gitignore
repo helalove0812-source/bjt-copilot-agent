@@ -1,0 +1,36 @@
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+*.so
+.Python
+.venv/
+venv/
+ENV/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Logs
+*.log
+
+# Databases / local data
+*.db
+*.sqlite
+*.sqlite3
+data/
+
+# Node / frontend build
+node_modules/
+dist/
+build/
+.vite/
+
+# IDE
+.idea/
+.vscode/
