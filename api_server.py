@@ -133,6 +133,34 @@ def _points_to_dict(points) -> list[dict]:
     return [_point_to_dict(point) for point in points]
 
 
+def _auto_import_datasheet_profile(store_path: Path, profile) -> tuple[str, str]:
+    if not profile or str(getattr(profile, "confidence", "")) != "datasheet_lookup":
+        return "", ""
+    payload = {
+        "model": str(profile.model),
+        "bjt_type": str(profile.bjt_type).upper(),
+        "vceo_max_v": float(profile.vceo_max_v),
+        "ic_max_a": float(profile.ic_max_a),
+        "p_tot_w": float(profile.p_tot_w),
+        "hfe_typical": list(profile.hfe_typical),
+        "package": str(profile.package or ""),
+        "pinout_hint": str(profile.pinout_hint or ""),
+        "description": str(profile.description or "联网 datasheet 自动导入"),
+        "confidence": "datasheet_lookup",
+        "source": "datasheet_lookup",
+        "confirmed_by_user": False,
+        "notes": "由联网 datasheet lookup 自动导入；如需长期使用，建议在器件库中复核。",
+        "enabled": True,
+    }
+    try:
+        create_user_profile(store_path, payload)
+        model = str(profile.model)
+        return f"已自动写入本地型号库：{model}", f"已将 {model} 自动写入本地型号库，后续会优先复用本地记录。"
+    except DuplicateUserProfileError:
+        model = str(profile.model)
+        return "", f"本地型号库已存在 {model}，本次未覆盖原有记录。"
+
+
 def _apply_ai_settings(payload: dict) -> None:
     settings = payload.get("ai_settings") if isinstance(payload.get("ai_settings"), dict) else {}
     provider = str(settings.get("provider") or "local")
@@ -966,6 +994,7 @@ class ApiHandler(BaseHTTPRequestHandler):
             datasheet_lookup = None
             completed_actions: list[str] = []
             agent_state_override = ""
+            datasheet_import_note = ""
             if intent.action in {"create_plan", "modify_plan"}:
                 if state.pending_profile_model and not state.pending_profile_fields:
                     profile_override = None
@@ -980,11 +1009,17 @@ class ApiHandler(BaseHTTPRequestHandler):
                     if profile_override is not None:
                         plan = apply_intent_to_plan(intent, state, cfg=_hw_config(config), profile_override=profile_override)
                         state.current_plan = plan
+                        imported_action, datasheet_import_note = _auto_import_datasheet_profile(
+                            self._user_profile_store_path(),
+                            profile_override,
+                        )
+                        if imported_action:
+                            completed_actions.append(imported_action)
                         summary, summary_used_ai, summary_provider, summary_usage = summarize_plan_with_ai(plan, text)
                         used_ai = used_ai or summary_used_ai
                         provider = summary_provider if summary_used_ai else provider
                         usage = summary_usage or usage
-                        response = summary
+                        response = summary if not datasheet_import_note else f"{summary}\n\n{datasheet_import_note}"
                     else:
                         response = answer_from_context(intent, state)
                 elif intent.action == "modify_plan" and _looks_like_autonomous_refine(text) and state.current_plan and state.current_execution:
@@ -1023,11 +1058,17 @@ class ApiHandler(BaseHTTPRequestHandler):
                                 usage = datasheet_lookup.llm_usage or usage
                     plan = apply_intent_to_plan(intent, state, cfg=_hw_config(config), profile_override=profile_override)
                     state.current_plan = plan
+                    imported_action, datasheet_import_note = _auto_import_datasheet_profile(
+                        self._user_profile_store_path(),
+                        profile_override,
+                    )
+                    if imported_action:
+                        completed_actions.append(imported_action)
                     summary, summary_used_ai, summary_provider, summary_usage = summarize_plan_with_ai(plan, text)
                     used_ai = used_ai or summary_used_ai
                     provider = summary_provider if summary_used_ai else provider
                     usage = summary_usage or usage
-                    response = summary
+                    response = summary if not datasheet_import_note else f"{summary}\n\n{datasheet_import_note}"
             elif intent.action in {"execute_simulation", "execute_hardware"}:
                 response = "我已理解为执行请求。请使用左侧或测试点模块的执行按钮触发；硬件执行仍需要本地确认和 SafetyGuard。"
             elif intent.action == "manage_profile_library":

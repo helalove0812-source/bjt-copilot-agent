@@ -686,6 +686,8 @@ function AIPanel({
   setModel,
   apiKey,
   setApiKey,
+  datasheetLookup,
+  setDatasheetLookup,
   text,
   setText,
   agentStatus,
@@ -790,6 +792,7 @@ function AIPanel({
             provider: provider === 1 ? "deepseek" : "local",
             model,
             api_key: apiKey,
+            datasheet_lookup: datasheetLookup,
             debug_intent: showIntentDebug,
           },
         }),
@@ -865,6 +868,10 @@ function AIPanel({
         <Segmented options={["本地", "DeepSeek"]} value={provider} onChange={setProvider} />
         <input className="mini" value={model} onChange={(e) => setModel(e.target.value)} />
         <input className="mini" type="password" placeholder="API Key,仅当前进程使用" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
+        <label className="agent-line" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <input type="checkbox" checked={datasheetLookup} onChange={(event) => setDatasheetLookup(event.target.checked)} />
+          联网 datasheet 补全
+        </label>
         <label className="agent-line" style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <input type="checkbox" checked={showIntentDebug} onChange={(event) => setShowIntentDebug(event.target.checked)} />
           显示理解过程
@@ -981,6 +988,7 @@ export default function App() {
   const [aiProvider, setAiProvider] = useState(1);
   const [aiModel, setAiModel] = useState("deepseek-v4-flash");
   const [aiApiKey, setAiApiKey] = useState("");
+  const [aiDatasheetLookup, setAiDatasheetLookup] = useState(true);
   const [aiText, setAiText] = useState("");
   const [testPoints, setTestPoints] = useState([]);
   const [planLimits, setPlanLimits] = useState({ ic: DEFAULT_TEST_CONFIG.ic, power: DEFAULT_TEST_CONFIG.pw });
@@ -1436,6 +1444,8 @@ export default function App() {
               setModel={setAiModel}
               apiKey={aiApiKey}
               setApiKey={setAiApiKey}
+              datasheetLookup={aiDatasheetLookup}
+              setDatasheetLookup={setAiDatasheetLookup}
               text={aiText}
               setText={setAiText}
               agentStatus={agentStatus}

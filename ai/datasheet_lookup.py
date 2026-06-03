@@ -36,6 +36,7 @@ class DatasheetLookupResult:
     llm_provider: str = ""
     llm_usage: dict | None = None
     error: str = ""
+    debug: dict | None = None
 
     def to_dict(self) -> dict:
         return {
@@ -49,6 +50,7 @@ class DatasheetLookupResult:
             "llm_provider": self.llm_provider,
             "llm_usage": self.llm_usage or {},
             "error": self.error,
+            "debug": self.debug or {},
         }
 
 
@@ -67,19 +69,38 @@ def lookup_datasheet_profile(
 ) -> DatasheetLookupResult:
     clean_model = normalize_model_name(model)
     query = f"{clean_model} transistor datasheet VCEO IC Ptot hFE pinout"
+    expanded_query = f"{clean_model} transistor datasheet collector current power dissipation hFE package"
+    debug: dict[str, object] = {
+        "initial_limit": int(limit),
+        "initial_result_count": 0,
+        "expanded_lookup_attempted": False,
+        "expanded_limit": max(int(limit), 8),
+        "expanded_result_count": 0,
+        "llm_error": "",
+    }
     if not clean_model or clean_model == "UNKNOWN":
-        return DatasheetLookupResult(ok=False, model=model, query=query, error="model is required")
+        return DatasheetLookupResult(ok=False, model=model, query=query, error="model is required", debug=debug)
     if not datasheet_lookup_enabled():
-        return DatasheetLookupResult(ok=False, model=clean_model, query=query, error="datasheet lookup disabled")
+        return DatasheetLookupResult(ok=False, model=clean_model, query=query, error="datasheet lookup disabled", debug=debug)
 
+    search = search_fn or web_search_datasheet
     try:
-        results = (search_fn or web_search_datasheet)(query, limit)
+        results = search(query, limit)
     except Exception as exc:
-        return DatasheetLookupResult(ok=False, model=clean_model, query=query, error=str(exc) or exc.__class__.__name__)
+        debug["llm_error"] = str(exc) or exc.__class__.__name__
+        return DatasheetLookupResult(
+            ok=False,
+            model=clean_model,
+            query=query,
+            error=str(exc) or exc.__class__.__name__,
+            debug=debug,
+        )
+    debug["initial_result_count"] = len(results)
 
     if not results:
-        return DatasheetLookupResult(ok=False, model=clean_model, query=query, sources=[], error="no search results")
+        return DatasheetLookupResult(ok=False, model=clean_model, query=query, sources=[], error="no search results", debug=debug)
 
+    llm_error = ""
     try:
         profile, confidence, provider, usage = _extract_profile_with_llm(clean_model, results)
         return DatasheetLookupResult(
@@ -92,17 +113,14 @@ def lookup_datasheet_profile(
             used_llm_api=True,
             llm_provider=provider,
             llm_usage=usage,
+            debug=debug,
         )
-    except (LLMUnavailable, ValueError, TypeError, json.JSONDecodeError):
-        profile = _extract_profile_heuristically(clean_model, results)
-        if profile is None:
-            return DatasheetLookupResult(
-                ok=False,
-                model=clean_model,
-                query=query,
-                sources=results,
-                error="could not extract required BJT ratings from search results",
-            )
+    except (LLMUnavailable, ValueError, TypeError, json.JSONDecodeError) as exc:
+        llm_error = str(exc) or exc.__class__.__name__
+        debug["llm_error"] = llm_error
+
+    profile = _extract_profile_heuristically(clean_model, results)
+    if profile is not None:
         return DatasheetLookupResult(
             ok=True,
             model=clean_model,
@@ -111,7 +129,63 @@ def lookup_datasheet_profile(
             sources=results,
             confidence="low",
             used_llm_api=False,
+            debug=debug,
         )
+
+    expanded_limit = max(int(limit), 8)
+    if expanded_limit > len(results):
+        debug["expanded_lookup_attempted"] = True
+        try:
+            expanded_results = _merge_search_results(
+                results,
+                search(query, expanded_limit),
+                search(expanded_query, expanded_limit),
+            )
+        except Exception:
+            expanded_results = results
+        debug["expanded_result_count"] = len(expanded_results)
+        if len(expanded_results) > len(results):
+            try:
+                profile, confidence, provider, usage = _extract_profile_with_llm(clean_model, expanded_results)
+                return DatasheetLookupResult(
+                    ok=True,
+                    model=clean_model,
+                    query=query,
+                    profile=profile,
+                    sources=expanded_results,
+                    confidence=confidence,
+                    used_llm_api=True,
+                    llm_provider=provider,
+                    llm_usage=usage,
+                    debug=debug,
+                )
+            except (LLMUnavailable, ValueError, TypeError, json.JSONDecodeError) as exc:
+                llm_error = str(exc) or exc.__class__.__name__
+                debug["llm_error"] = llm_error
+            profile = _extract_profile_heuristically(clean_model, expanded_results)
+            if profile is not None:
+                return DatasheetLookupResult(
+                    ok=True,
+                    model=clean_model,
+                    query=query,
+                    profile=profile,
+                    sources=expanded_results,
+                    confidence="low",
+                    used_llm_api=False,
+                    debug=debug,
+                )
+
+    error = "could not extract required BJT ratings from search results"
+    if llm_error:
+        error = f"{error}: {llm_error}"
+    return DatasheetLookupResult(
+        ok=False,
+        model=clean_model,
+        query=query,
+        sources=results,
+        error=error,
+        debug=debug,
+    )
 
 
 def web_search_datasheet(query: str, limit: int = 5) -> list[DatasheetSearchResult]:
@@ -190,6 +264,19 @@ def _strip_html(value: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
+def _merge_search_results(*result_sets: Iterable[DatasheetSearchResult]) -> list[DatasheetSearchResult]:
+    merged: list[DatasheetSearchResult] = []
+    seen: set[tuple[str, str]] = set()
+    for result_set in result_sets:
+        for item in result_set:
+            key = (item.url.strip().lower(), item.title.strip().lower())
+            if key in seen:
+                continue
+            seen.add(key)
+            merged.append(item)
+    return merged
+
+
 def _extract_profile_with_llm(
     model: str,
     results: Iterable[DatasheetSearchResult],
@@ -200,31 +287,46 @@ def _extract_profile_with_llm(
 必须提取：model、bjt_type(NPN/PNP)、description、vceo_max_v、ic_max_a、p_tot_w、hfe_typical([min,max])、package、pinout_hint、confidence(high/medium/low)。"""
     user_text = json.dumps({"model": model, "sources": source_payload}, ensure_ascii=False, indent=2)
     result = chat_text(system_text=system_text, user_text=user_text, timeout_s=30)
-    data = _parse_json_object(result.text)
+    data = _merge_profile_mapping(_heuristic_profile_mapping(model, results), _parse_json_object(result.text))
     profile = _profile_from_extracted_mapping(model, data, confidence_prefix="datasheet")
     confidence = str(data.get("confidence") or "medium")
     return profile, confidence, f"{result.provider}:{result.model}", result.usage
+
+
+def _heuristic_profile_mapping(
+    model: str,
+    results: Iterable[DatasheetSearchResult],
+) -> dict[str, object]:
+    text = "\n".join(f"{item.title}\n{item.snippet}" for item in results)
+    title_text = "\n".join(item.title for item in results)
+    bjt_type = "NPN" if re.search(r"\bNPN\b", text, re.I) else "PNP" if re.search(r"\bPNP\b", text, re.I) else ""
+    pinout_hint = "联网资料提示：不同厂商/封装可能存在引脚差异，硬件执行前必须核对原始 datasheet。"
+    if re.search(r"\bE\s*[-/ ]?\s*B\s*[-/ ]?\s*C\b|\bECB\b", text, re.I):
+        pinout_hint = "联网资料提示：搜索结果出现 ECB 引脚顺序，不同厂商/封装仍可能不同，硬件执行前必须核对原始 datasheet。"
+    elif re.search(r"\bE\s*[-/ ]?\s*C\s*[-/ ]?\s*B\b|\bEBC\b", text, re.I):
+        pinout_hint = "联网资料提示：搜索结果出现 E/C/B 类引脚顺序，不同厂商/封装仍可能不同，硬件执行前必须核对原始 datasheet。"
+    return {
+        "model": model,
+        "bjt_type": bjt_type,
+        "description": _first_description_from_results(title_text) or "联网 datasheet 搜索提取的 BJT 型号资料",
+        "vceo_max_v": _first_rating(
+            text,
+            ("VCEO", "Vceo", "Collector-Emitter Voltage", "Collector Emitter Voltage", "Collector to Emitter Voltage"),
+        ),
+        "ic_max_a": _first_current_rating(text),
+        "p_tot_w": _first_power_rating(text),
+        "hfe_typical": _first_hfe_range(text),
+        "package": _first_package(text),
+        "pinout_hint": pinout_hint,
+        "confidence": "low",
+    }
 
 
 def _extract_profile_heuristically(
     model: str,
     results: Iterable[DatasheetSearchResult],
 ) -> TransistorProfile | None:
-    text = "\n".join(f"{item.title}\n{item.snippet}" for item in results)
-    bjt_type = "NPN" if re.search(r"\bNPN\b", text, re.I) else "PNP" if re.search(r"\bPNP\b", text, re.I) else ""
-    if not bjt_type:
-        return None
-    data = {
-        "model": model,
-        "bjt_type": bjt_type,
-        "description": "联网 datasheet 搜索提取的 BJT 型号资料",
-        "vceo_max_v": _first_rating(text, ("VCEO", "Vceo", "Collector-Emitter Voltage")),
-        "ic_max_a": _first_current_rating(text),
-        "p_tot_w": _first_power_rating(text),
-        "hfe_typical": _first_hfe_range(text),
-        "package": _first_package(text),
-        "pinout_hint": "联网资料提示：不同厂商/封装可能存在引脚差异，硬件执行前必须核对原始 datasheet。",
-    }
+    data = _heuristic_profile_mapping(model, results)
     try:
         return _profile_from_extracted_mapping(model, data, confidence_prefix="datasheet")
     except ValueError:
@@ -235,9 +337,9 @@ def _profile_from_extracted_mapping(model: str, data: dict, *, confidence_prefix
     bjt_type = str(data.get("bjt_type") or "").upper()
     if bjt_type not in {"NPN", "PNP"}:
         raise ValueError("missing bjt_type")
-    vceo = _positive_float(data.get("vceo_max_v"))
-    ic = _positive_float(data.get("ic_max_a"))
-    p_tot = _positive_float(data.get("p_tot_w"))
+    vceo = _voltage_value(data.get("vceo_max_v"))
+    ic = _current_value_a(data.get("ic_max_a"))
+    p_tot = _power_value_w(data.get("p_tot_w"))
     if vceo is None or ic is None or p_tot is None:
         raise ValueError("missing rating fields")
     hfe = data.get("hfe_typical") or [0, 0]
@@ -277,6 +379,55 @@ def _positive_float(value: object) -> float | None:
     return number if number > 0 else None
 
 
+def _number_with_optional_unit(value: object) -> tuple[float, str]:
+    if isinstance(value, (int, float)):
+        return float(value), ""
+    if not isinstance(value, str):
+        raise ValueError("unsupported value")
+    match = re.search(r"(-?\d+(?:\.\d+)?)\s*([A-Za-z]+)?", value.replace(",", ""))
+    if not match:
+        raise ValueError("unsupported value")
+    return float(match.group(1)), (match.group(2) or "").lower()
+
+
+def _voltage_value(value: object) -> float | None:
+    try:
+        number, unit = _number_with_optional_unit(value)
+    except ValueError:
+        return None
+    if number <= 0:
+        return None
+    if unit in {"kv"}:
+        return number * 1000.0
+    return number
+
+
+def _current_value_a(value: object) -> float | None:
+    try:
+        number, unit = _number_with_optional_unit(value)
+    except ValueError:
+        return None
+    if number <= 0:
+        return None
+    if unit in {"ua"}:
+        return number / 1_000_000.0
+    if unit in {"ma"}:
+        return number / 1000.0
+    return number
+
+
+def _power_value_w(value: object) -> float | None:
+    try:
+        number, unit = _number_with_optional_unit(value)
+    except ValueError:
+        return None
+    if number <= 0:
+        return None
+    if unit in {"mw"}:
+        return number / 1000.0
+    return number
+
+
 def _first_rating(text: str, labels: tuple[str, ...]) -> float | None:
     for label in labels:
         match = re.search(label + r".{0,40}?(\d+(?:\.\d+)?)\s*V", text, re.I | re.S)
@@ -286,15 +437,26 @@ def _first_rating(text: str, labels: tuple[str, ...]) -> float | None:
 
 
 def _first_current_rating(text: str) -> float | None:
-    match = re.search(r"(?:Ic|Collector Current).{0,50}?(\d+(?:\.\d+)?)\s*(mA|A)", text, re.I | re.S)
+    match = re.search(
+        r"(?:Ic(?:\s*max)?|Collector Current|Maximum Collector Current|Collector current up to).{0,60}?(\d+(?:\.\d+)?)\s*(uA|mA|A)",
+        text,
+        re.I | re.S,
+    )
     if not match:
         return None
     value = float(match.group(1))
-    return value / 1000.0 if match.group(2).lower() == "ma" else value
+    unit = match.group(2).lower()
+    if unit == "ua":
+        return value / 1_000_000.0
+    return value / 1000.0 if unit == "ma" else value
 
 
 def _first_power_rating(text: str) -> float | None:
-    match = re.search(r"(?:Ptot|Pd|Power Dissipation).{0,50}?(\d+(?:\.\d+)?)\s*(mW|W)", text, re.I | re.S)
+    match = re.search(
+        r"(?:Ptot|Pc|Pd|Power Dissipation|Collector Power Dissipation|Total Device Dissipation).{0,60}?(\d+(?:\.\d+)?)\s*(mW|W)",
+        text,
+        re.I | re.S,
+    )
     if not match:
         return None
     value = float(match.group(1))
@@ -311,3 +473,30 @@ def _first_hfe_range(text: str) -> list[int]:
 def _first_package(text: str) -> str:
     packages = re.findall(r"\b(?:TO-92|SOT-23|TO-220|TO-18|SOT-89)\b", text, re.I)
     return " / ".join(dict.fromkeys(item.upper() for item in packages))
+
+
+def _first_description_from_results(text: str) -> str:
+    match = re.search(
+        r"\b(?:small signal|general purpose|audio frequency amplifier|low noise|switching|power)\b.{0,40}transistor",
+        text,
+        re.I,
+    )
+    if not match:
+        return ""
+    return match.group(0).strip().capitalize()
+
+
+def _merge_profile_mapping(fallback: dict[str, object], preferred: dict[str, object]) -> dict[str, object]:
+    merged = dict(fallback)
+    for key, value in preferred.items():
+        if value is None:
+            continue
+        if isinstance(value, str) and not value.strip():
+            continue
+        if isinstance(value, (list, tuple, dict)) and not value:
+            continue
+        if key == "hfe_typical" and isinstance(value, (list, tuple)) and len(value) >= 2:
+            if not any(value):
+                continue
+        merged[key] = value
+    return merged

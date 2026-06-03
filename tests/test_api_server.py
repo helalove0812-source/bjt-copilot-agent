@@ -108,8 +108,9 @@ def test_ai_chat_returns_pending_profile_state_for_unknown_model(monkeypatch) ->
     assert result["intent_debug"]["final_source"] == "local"
 
 
-def test_ai_chat_can_build_unknown_model_plan_from_datasheet_lookup(monkeypatch) -> None:
+def test_ai_chat_can_build_unknown_model_plan_from_datasheet_lookup(monkeypatch, tmp_path) -> None:
     monkeypatch.setenv("BJT_AI_MODE", "local")
+    monkeypatch.setenv("BJT_USER_PROFILE_STORE", str(tmp_path / "profiles.json"))
     profile = TransistorProfile(
         model="C1815",
         bjt_type="NPN",
@@ -152,6 +153,112 @@ def test_ai_chat_can_build_unknown_model_plan_from_datasheet_lookup(monkeypatch)
     assert result["conversation_state"]["pending_profile_model"] is None
     assert result["datasheet_lookup"]["ok"] is True
     assert result["datasheet_lookup"]["sources"][0]["url"] == "https://example.test/c1815.pdf"
+
+
+def test_ai_chat_auto_imports_datasheet_profile_into_user_library(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("BJT_AI_MODE", "local")
+    monkeypatch.setenv("BJT_USER_PROFILE_STORE", str(tmp_path / "profiles.json"))
+    profile = TransistorProfile(
+        model="C1815",
+        bjt_type="NPN",
+        description="联网 datasheet 搜索提取的 NPN 小信号三极管",
+        vceo_max_v=50.0,
+        ic_max_a=0.15,
+        p_tot_w=0.4,
+        hfe_typical=(70, 700),
+        package="TO-92",
+        pinout_hint="联网资料提示：不同厂商可能存在 ECB/EBC 差异。",
+        confidence="datasheet_lookup",
+    )
+
+    def fake_lookup(model: str):
+        return DatasheetLookupResult(
+            ok=True,
+            model=model,
+            query=f"{model} transistor datasheet",
+            profile=profile,
+            sources=[DatasheetSearchResult(title="C1815 datasheet", url="https://example.test/c1815.pdf")],
+            confidence="high",
+        )
+
+    monkeypatch.setattr(api_server, "lookup_datasheet_profile", fake_lookup)
+
+    status, result = call_ai_chat_handler(
+        {
+            "text": "测试 C1815",
+            "mode": "hardware",
+            "context": {},
+            "ai_settings": {"provider": "local", "datasheet_lookup": True},
+        }
+    )
+
+    assert status == 200
+    assert result["ok"] is True
+    assert "自动写入本地型号库" in result["response"]
+    record = api_server.get_user_profile_record(tmp_path / "profiles.json", "C1815")
+    assert record["model"] == "C1815"
+    assert record["source"] == "datasheet_lookup"
+    assert record["confirmed_by_user"] is False
+    assert record["package"] == "TO-92"
+
+
+def test_ai_chat_does_not_overwrite_existing_user_profile_when_auto_importing(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("BJT_AI_MODE", "local")
+    store = tmp_path / "profiles.json"
+    monkeypatch.setenv("BJT_USER_PROFILE_STORE", str(store))
+    api_server.create_user_profile(
+        store,
+        {
+            "model": "C1815",
+            "bjt_type": "NPN",
+            "vceo_max_v": 60.0,
+            "ic_max_a": 0.2,
+            "p_tot_w": 0.5,
+            "source": "user_confirmed",
+            "confirmed_by_user": True,
+        },
+    )
+    profile = TransistorProfile(
+        model="C1815",
+        bjt_type="NPN",
+        description="联网 datasheet 搜索提取的 NPN 小信号三极管",
+        vceo_max_v=50.0,
+        ic_max_a=0.15,
+        p_tot_w=0.4,
+        hfe_typical=(70, 700),
+        package="TO-92",
+        pinout_hint="联网资料提示：不同厂商可能存在 ECB/EBC 差异。",
+        confidence="datasheet_lookup",
+    )
+
+    def fake_lookup(model: str):
+        return DatasheetLookupResult(
+            ok=True,
+            model=model,
+            query=f"{model} transistor datasheet",
+            profile=profile,
+            sources=[DatasheetSearchResult(title="C1815 datasheet", url="https://example.test/c1815.pdf")],
+            confidence="high",
+        )
+
+    monkeypatch.setattr(api_server, "lookup_datasheet_profile", fake_lookup)
+
+    status, result = call_ai_chat_handler(
+        {
+            "text": "测试 C1815",
+            "mode": "hardware",
+            "context": {},
+            "ai_settings": {"provider": "local", "datasheet_lookup": True},
+        }
+    )
+
+    assert status == 200
+    assert result["ok"] is True
+    assert "本地型号库已存在 C1815" in result["response"]
+    record = api_server.get_user_profile_record(store, "C1815")
+    assert record["vceo_max_v"] == 60.0
+    assert record["ic_max_a"] == 0.2
+    assert record["confirmed_by_user"] is True
 
 
 def test_ai_chat_preserves_pending_profile_fields_across_turns(monkeypatch) -> None:
