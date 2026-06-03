@@ -1495,7 +1495,7 @@ function Styles() {
 .theme-btn{width:30px;height:30px;border-radius:8px;border:none;cursor:pointer;background:transparent;color:var(--label-2);display:grid;place-items:center;transition:background .15s}
 .theme-btn:hover{background:var(--bg-fill)}
 
-.app{flex:1;display:grid;grid-template-columns:268px minmax(0,1fr) 320px;min-height:0}
+.app{flex:1;display:grid;grid-template-columns:268px minmax(0,1fr) 320px;grid-template-areas:"sidebar content inspector";min-height:0}
 .sidebar{grid-area:sidebar;background:var(--bg-sidebar);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);border-right:.5px solid var(--separator);padding:var(--s5) var(--s4) var(--s6);overflow-y:auto;min-width:0}
 .content{grid-area:content;background:var(--bg-content);overflow-y:auto;padding:var(--s7) var(--s7) var(--s8);min-width:0}
 .inspector{grid-area:inspector;background:var(--bg-sidebar);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);border-left:.5px solid var(--separator);display:flex;flex-direction:column;min-height:0;min-width:0}

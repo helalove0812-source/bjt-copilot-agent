@@ -934,6 +934,10 @@ def _actual_actions_from_agent_output(sample: dict[str, Any], agent_result: Any 
         action = str(item.get("action") or "").strip()
         if action:
             actions.append(action)
+    for item in getattr(result, "safety_action_items", []):
+        action = str(item.get("action") or "").strip()
+        if action:
+            actions.append(action)
     if result.intent.action:
         actions.append(result.intent.action)
     return sorted(set(actions))

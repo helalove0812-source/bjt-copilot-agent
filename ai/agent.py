@@ -10,7 +10,13 @@ import secrets
 
 from core.types import HwConfig
 
-from ai.action_taxonomy import action_items_from_labels, safety_action_items_from_policy
+from ai.action_taxonomy import (
+    action_item,
+    action_items_from_labels,
+    safety_action_items_from_blocked_reason,
+    safety_action_items_from_policy,
+)
+from ai.action_recommender import recommend_actions
 from ai.assistant import build_execution_stats, summarize_execution_with_ai, summarize_plan_with_ai
 from ai.autonomy import refine_plan_after_execution
 from ai.conversation import (
@@ -121,6 +127,7 @@ class TestAgent:
         agent_state = "idle"
         required_inputs: list[str] = []
         next_actions: list[str] = []
+        next_action_items: list[dict] = []
         diagnosis_tags_out: list[str] = []
         completed_actions: list[str] = []
         safety_policy_tags: list[str] = []
@@ -322,7 +329,8 @@ class TestAgent:
                 response = answer_from_context(intent, self.state)
                 diagnosis_tags_out = diagnose_tags(text, measurements=current_measurements)
             agent_state = "diagnosing"
-            next_actions = _diagnosis_next_actions(self.state.current_plan)
+            next_action_items = _diagnosis_next_action_items(self.state.current_plan, diagnosis_tags_out)
+            next_actions = [str(item.get("label") or item.get("action") or "") for item in next_action_items]
             agent_steps.append(_agent_step("done", "分析上下文", "诊断/解释结果"))
 
         elif _looks_like_diagnosis(text):
@@ -334,7 +342,8 @@ class TestAgent:
             )
             diagnosis_tags_out = diagnose_tags(text, logs=logs or [], measurements=current_measurements)
             agent_state = "diagnosing"
-            next_actions = _diagnosis_next_actions(self.state.current_plan)
+            next_action_items = _diagnosis_next_action_items(self.state.current_plan, diagnosis_tags_out)
+            next_actions = [str(item.get("label") or item.get("action") or "") for item in next_action_items]
             agent_steps.append(_agent_step("done", "分析上下文", "诊断/解释结果"))
 
         else:
@@ -373,7 +382,19 @@ class TestAgent:
             execution_state=execution_state,
             pending_profile_model=pending_profile_model,
         )
+        blocked_detail = str((execution_context or {}).get("abort_reason") or "")
         safety_action_items = safety_action_items_from_policy(safety_policy_tags, safety_policy_reasons)
+        if not safety_action_items and blocked_reason:
+            safety_action_items = safety_action_items_from_blocked_reason(blocked_reason, detail=blocked_detail)
+        safety_action_items = _merge_action_items(
+            safety_action_items,
+            _plan_safety_action_items(intent, plan),
+        )
+        next_action_items = _merge_action_items(
+            next_action_items or _action_items_from_labels(next_actions),
+            _plan_context_action_items(intent, plan),
+            recommend_actions(diagnosis_tags=diagnosis_tags_out),
+        )
         return AgentTurnResult(
             response=response,
             intent=intent,
@@ -390,11 +411,11 @@ class TestAgent:
             blocked_reason=blocked_reason,
             blocked_reason_item=blocked_reason_item(
                 blocked_reason,
-                detail=str((execution_context or {}).get("abort_reason") or ""),
+                detail=blocked_detail,
             ),
             required_inputs=required_inputs,
             next_actions=next_actions,
-            next_action_items=_action_items_from_labels(next_actions),
+            next_action_items=next_action_items or _action_items_from_labels(next_actions),
             diagnosis_tags=diagnosis_tags_out,
             completed_actions=completed_actions,
             completed_action_items=_action_items_from_labels(completed_actions),
@@ -441,6 +462,46 @@ def _agent_step(status: str, label: str, detail: str = "") -> dict:
 
 def _action_items_from_labels(labels: list[str]) -> list[dict]:
     return action_items_from_labels(labels)
+
+
+def _merge_action_items(*groups: list[dict]) -> list[dict]:
+    items: list[dict] = []
+    seen: set[str] = set()
+    for group in groups:
+        for item in group:
+            action = str(item.get("action") or item.get("id") or "")
+            key = action or str(item)
+            if key in seen:
+                continue
+            items.append(item)
+            seen.add(key)
+    return items
+
+
+def _plan_safety_action_items(intent: AIIntent, plan: TestPlan | None) -> list[dict]:
+    if plan is None or plan.profile.get("confidence") != "fallback":
+        return []
+    if intent.ic_limit_a is not None and intent.model and intent.model.upper() != "UNKNOWN":
+        return [
+            action_item("reject_unsafe", reason="用户请求电流超过型号资料额定值，计划已降级为 UNKNOWN 保守兜底。"),
+            action_item("clamp_current", reason="已将 Ic 上限压到硬件与保守策略允许范围。"),
+            action_item("explain_limit", reason="接硬件前必须重新确认 datasheet、限流和器件身份。"),
+        ]
+    return [
+        action_item("use_conservative_default", reason="型号未知或资料不足，已使用最保守限流/限压/限功耗默认值。"),
+        action_item("prompt_model_info", reason="继续前请补充型号、管型、Vceo、Ic 最大值和 Ptot。"),
+    ]
+
+
+def _plan_context_action_items(intent: AIIntent, plan: TestPlan | None) -> list[dict]:
+    if plan is None:
+        return []
+    items: list[dict] = []
+    if intent.action == "modify_plan":
+        items.append(action_item("update_plan", reason="已基于当前上下文更新测试计划。"))
+    if plan.depth == "conservative":
+        items.append(action_item("apply_conservative_defaults", reason="计划采用保守限流、限压或低风险默认参数。"))
+    return items
 
 
 def _missing_profile_inputs(fields: dict[str, float | str]) -> list[str]:
@@ -499,6 +560,19 @@ def _diagnosis_next_actions(plan: TestPlan | None) -> list[str]:
     if plan and plan.bjt_type == "NPN":
         actions.append("确认安全后再请求硬件执行")
     return actions
+
+
+def _diagnosis_next_action_items(plan: TestPlan | None, diagnosis_tags: list[str]) -> list[dict]:
+    recommended = recommend_actions(diagnosis_tags=diagnosis_tags)
+    fallback = _action_items_from_labels(_diagnosis_next_actions(plan))
+    merged: list[dict] = []
+    seen: set[str] = set()
+    for item in [*recommended, *fallback]:
+        action = str(item.get("action") or item.get("id") or "")
+        if action and action not in seen:
+            merged.append(item)
+            seen.add(action)
+    return merged
 
 
 def _merge_provider(primary: str, secondary: str) -> str:

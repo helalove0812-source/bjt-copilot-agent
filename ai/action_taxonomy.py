@@ -5,6 +5,8 @@ import hashlib
 
 ACTION_METADATA: dict[str, dict[str, str]] = {
     "create_plan": {"label": "生成测试计划", "kind": "plan", "priority": "medium"},
+    "update_plan": {"label": "更新当前计划", "kind": "plan", "priority": "medium"},
+    "apply_conservative_defaults": {"label": "应用保守默认值", "kind": "plan", "priority": "high"},
     "run_simulation": {"label": "运行仿真", "kind": "execute", "priority": "medium"},
     "run_conservative_simulation": {"label": "先运行保守仿真", "kind": "execute", "priority": "medium"},
     "rerun_conservative_simulation": {"label": "重新运行保守仿真", "kind": "execute", "priority": "medium"},
@@ -24,6 +26,10 @@ ACTION_METADATA: dict[str, dict[str, str]] = {
     "check_wiring": {"label": "检查接线", "kind": "diagnosis", "priority": "high"},
     "prompt_pinout_confirm": {"label": "确认引脚定义", "kind": "safety", "priority": "high"},
     "suggest_next_step": {"label": "建议下一步", "kind": "diagnosis", "priority": "medium"},
+    "suggest_failure_analysis": {"label": "建议失效分析", "kind": "diagnosis", "priority": "medium"},
+    "increase_averaging": {"label": "增加平均次数", "kind": "plan", "priority": "medium"},
+    "use_conservative_default": {"label": "使用保守默认值", "kind": "safety", "priority": "high"},
+    "prompt_model_info": {"label": "提示补充型号信息", "kind": "input", "priority": "medium"},
     "reject_unsafe": {"label": "拒绝危险请求", "kind": "safety", "priority": "high"},
     "explain_limit": {"label": "解释安全限制", "kind": "safety", "priority": "high"},
     "lower_vbb_and_rerun": {"label": "降低 Vbb 上沿后复测", "kind": "plan", "priority": "medium"},
@@ -112,6 +118,15 @@ POLICY_TAG_TO_ACTIONS: dict[str, list[str]] = {
     "clamped_to_hardware_max": ["clamp_current", "clamp_power", "explain_limit"],
 }
 
+BLOCKED_REASON_TO_ACTIONS: dict[str, list[str]] = {
+    "unsafe_request": ["reject_unsafe", "explain_limit"],
+    "hardware_confirmation_required": ["request_hardware_confirmation", "continue_hardware_with_token"],
+    "unknown_model_incomplete": ["complete_profile_fields", "choose_known_model"],
+    "pnp_execution_blocked": ["reject_unsafe", "verify_datasheet_and_pinout"],
+    "runtime_abort": ["inspect_abort_reason", "lower_limits_and_check_wiring", "explain_retained_measurements"],
+    "preflight_blocked": ["inspect_block_reason", "request_hardware_after_safety_check"],
+}
+
 
 def action_label(action: str) -> str:
     return ACTION_METADATA.get(action, {}).get("label", action)
@@ -165,6 +180,11 @@ def safety_action_items_from_policy(tags: list[str], reasons: list[str]) -> list
         actions.extend(POLICY_TAG_TO_ACTIONS.get(tag, []))
     detail = "；".join(str(item) for item in reasons if item)
     return [action_item(action, reason=detail) for action in dict.fromkeys(actions)]
+
+
+def safety_action_items_from_blocked_reason(blocked_reason: str, *, detail: str = "") -> list[dict]:
+    actions = BLOCKED_REASON_TO_ACTIONS.get(blocked_reason, [])
+    return [action_item(action, reason=detail) for action in actions]
 
 
 def safety_action_items_from_labels(labels: list[str]) -> list[dict]:

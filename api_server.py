@@ -15,7 +15,11 @@ from app.services import (
     run_scan_curves,
     run_scope_check,
 )
-from ai.action_taxonomy import action_items_from_labels, safety_action_items_from_labels
+from ai.action_taxonomy import (
+    action_items_from_labels,
+    safety_action_items_from_blocked_reason,
+    safety_action_items_from_labels,
+)
 from ai.assistant import summarize_plan_with_ai
 from ai.autonomy import refine_plan_after_execution
 from ai.conversation import (
@@ -417,6 +421,7 @@ def _canonical_policy_fields(*, blocked_reason: str, detail: str, execution_stat
         "execution_state": execution_state,
         "blocked_reason": blocked_reason,
         "blocked_reason_item": blocked_reason_item(blocked_reason, detail=detail),
+        "safety_action_items": safety_action_items_from_blocked_reason(blocked_reason, detail=detail),
     }
 
 

@@ -359,6 +359,12 @@ def infer_intent_locally(text: str, state: AIConversationState, *, default_mode:
     power_limit = rule.power_limit_w
     vcc_max = rule.vcc_max
     vbb_points = rule.vbb_points
+    if has_current:
+        relative_limits = _relative_limit_overrides(text, state.current_plan)
+        if ic_limit is None:
+            ic_limit = relative_limits.get("ic_limit_a")
+        if power_limit is None:
+            power_limit = relative_limits.get("power_limit_w")
     depth = rule.depth or infer_depth(text)
     goal = rule.goal or infer_goal(text)
     profile = lookup_transistor(guessed_model) if has_model else None
@@ -503,6 +509,78 @@ def _with_staged_deepen_response(intent: AIIntent) -> AIIntent:
         library_patch=intent.library_patch,
         response=response,
     )
+
+
+def _relative_limit_overrides(text: str, plan: TestPlan) -> dict[str, float]:
+    changes: dict[str, float] = {}
+    if _mentions_current_limit(text) and _looks_like_limit_decrease(text):
+        changes["ic_limit_a"] = float(plan.ic_limit_a) * _relative_limit_factor(text, default=0.5)
+    elif _mentions_current_limit(text) and _looks_like_limit_increase(text):
+        changes["ic_limit_a"] = float(plan.ic_limit_a) * _relative_limit_factor(text, default=1.5)
+
+    if _mentions_power_limit(text) and _looks_like_limit_decrease(text):
+        changes["power_limit_w"] = float(plan.power_limit_w) * _relative_limit_factor(text, default=0.5)
+    elif _mentions_power_limit(text) and _looks_like_limit_increase(text):
+        changes["power_limit_w"] = float(plan.power_limit_w) * _relative_limit_factor(text, default=1.5)
+    return changes
+
+
+def _mentions_current_limit(text: str) -> bool:
+    lowered = text.lower()
+    return any(word in lowered for word in ("ic", "current")) or any(
+        word in text for word in ("电流", "限流", "电流上限", "限制电流")
+    )
+
+
+def _mentions_power_limit(text: str) -> bool:
+    lowered = text.lower()
+    return any(word in lowered for word in ("power", "ptot", "pd")) or any(
+        word in text for word in ("功耗", "功率", "功耗上限")
+    )
+
+
+def _looks_like_limit_decrease(text: str) -> bool:
+    return any(
+        word in text
+        for word in (
+            "调小",
+            "小一点",
+            "小点",
+            "降低",
+            "降一点",
+            "低一点",
+            "低点",
+            "减小",
+            "收紧",
+            "保守",
+        )
+    )
+
+
+def _looks_like_limit_increase(text: str) -> bool:
+    return any(
+        word in text
+        for word in (
+            "调大",
+            "大一点",
+            "大点",
+            "提高",
+            "高一点",
+            "高点",
+            "增大",
+            "放宽",
+            "拉高",
+            "加大",
+            "翻倍",
+            "两倍",
+        )
+    )
+
+
+def _relative_limit_factor(text: str, *, default: float) -> float:
+    if any(word in text for word in ("翻倍", "两倍")):
+        return 2.0
+    return default
 
 
 def _compare_recent_executions(previous: dict, latest: dict) -> str:

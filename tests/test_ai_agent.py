@@ -271,6 +271,9 @@ def test_agent_turn_exposes_runtime_abort_as_canonical_state(monkeypatch) -> Non
     assert result.execution_state == "aborted"
     assert result.blocked_reason == "runtime_abort"
     assert result.blocked_reason_item["label"] == "运行时安全中止"
+    safety_actions = [item["action"] for item in result.safety_action_items]
+    assert "inspect_abort_reason" in safety_actions
+    assert "lower_limits_and_check_wiring" in safety_actions
 
 
 def test_agent_plan_result_exposes_next_actions(monkeypatch) -> None:
@@ -293,6 +296,45 @@ def test_agent_plan_result_exposes_next_actions(monkeypatch) -> None:
     assert result.agent_steps[-1]["label"] == "生成测试计划"
 
 
+def test_agent_exposes_safety_actions_for_unsafe_current_plan(monkeypatch) -> None:
+    monkeypatch.setenv("BJT_AI_MODE", "local")
+    agent = TestAgent()
+
+    result = agent.run_turn("Ic 直接拉到 1A 给我测 2N3904")
+
+    assert result.plan is not None
+    assert result.plan.model == "UNKNOWN"
+    actions = [item["action"] for item in result.safety_action_items]
+    assert "reject_unsafe" in actions
+    assert "clamp_current" in actions
+    assert "explain_limit" in actions
+
+
+def test_agent_exposes_safety_actions_for_unknown_model_defaults(monkeypatch) -> None:
+    monkeypatch.setenv("BJT_AI_MODE", "local")
+    agent = TestAgent()
+
+    result = agent.run_turn("型号不确定，先测")
+
+    assert result.plan is not None
+    assert result.plan.model == "UNKNOWN"
+    actions = [item["action"] for item in result.safety_action_items]
+    assert "use_conservative_default" in actions
+    assert "prompt_model_info" in actions
+
+
+def test_agent_exposes_conservative_default_action_for_screening_plan(monkeypatch) -> None:
+    monkeypatch.setenv("BJT_AI_MODE", "local")
+    agent = TestAgent()
+
+    result = agent.run_turn("S8550 上电快速筛一下")
+
+    assert result.plan is not None
+    assert result.plan.depth == "conservative"
+    actions = [item["action"] for item in result.next_action_items]
+    assert "apply_conservative_defaults" in actions
+
+
 def test_agent_modifies_existing_plan_with_context(monkeypatch) -> None:
     monkeypatch.setenv("BJT_AI_MODE", "local")
     state = AIConversationState()
@@ -307,6 +349,8 @@ def test_agent_modifies_existing_plan_with_context(monkeypatch) -> None:
     assert result.plan.ic_limit_a == 0.01
     assert len(result.plan.static_points) == 10
     assert agent.state.current_plan == result.plan
+    actions = [item["action"] for item in result.next_action_items]
+    assert "update_plan" in actions
 
 
 def test_agent_exposes_staged_deepen_next_actions(monkeypatch) -> None:
@@ -424,6 +468,21 @@ def test_agent_exposes_diagnosis_tags_for_fault_text(monkeypatch) -> None:
     assert {"overcurrent", "bce_reversed"}.issubset(set(result.diagnosis_tags))
     assert {"overcurrent", "bce_reversed"}.issubset(set(result.to_dict()["diagnosis_tags"]))
     assert any(item["id"] == "modify_plan_from_diagnosis" for item in result.next_action_items)
+
+
+def test_agent_explain_result_appends_recommender_actions(monkeypatch) -> None:
+    monkeypatch.setenv("BJT_AI_MODE", "local")
+    state = AIConversationState()
+    state.current_plan = build_test_plan(model="S8050", goal="beta", depth="standard")
+
+    result = TestAgent(state).run_turn("刚才 Ic 过流了，而且像是 C/E 接反")
+
+    actions = [item["action"] for item in result.next_action_items]
+
+    assert "check_wiring" in actions
+    assert "prompt_pinout_confirm" in actions
+    assert "clamp_current" in actions
+    assert "explain_limit" in actions
 
 
 def test_agent_compares_two_recent_executions(monkeypatch) -> None:

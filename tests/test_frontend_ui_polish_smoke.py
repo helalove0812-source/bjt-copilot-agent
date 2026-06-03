@@ -41,3 +41,9 @@ def test_small_screen_layout_keeps_inspector_visible() -> None:
     assert '@media (max-width:1080px){.app{grid-template-columns:220px minmax(0,1fr);grid-template-areas:"sidebar content" "sidebar inspector"}' in source
     assert '@media (max-width:820px){.window{height:auto;min-height:calc(100vh - 56px)}.app{grid-template-columns:1fr;grid-template-areas:"sidebar" "content" "inspector"}' in source
     assert ".inspector{max-height:none}" in source
+
+
+def test_desktop_layout_declares_three_panel_grid_areas() -> None:
+    source = APP_FILE.read_text(encoding="utf-8")
+
+    assert '.app{flex:1;display:grid;grid-template-columns:268px minmax(0,1fr) 320px;grid-template-areas:"sidebar content inspector";min-height:0}' in source

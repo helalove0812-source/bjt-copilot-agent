@@ -543,6 +543,39 @@ def test_evaluator_prefers_real_structured_action_outputs() -> None:
     assert report["soft_metrics"]["actions"]["accuracy"] == 1.0
 
 
+def test_evaluator_merges_safety_action_items_into_actions() -> None:
+    samples = [
+        {
+            "category": "diagnosis",
+            "user_text": "解释一下这次为什么停了",
+            "context": {
+                "current_plan": {"model": "S8050", "goal": "beta", "depth": "standard"},
+                "current_execution": {
+                    "mode": "hardware",
+                    "measurements": [{"Ic": 0.031, "Vce": 0.1, "beta": 310.0, "region": "saturation"}],
+                    "aborted": True,
+                    "abort_reason": "当前 Ic 超过计划上限，已停止后续硬件测量。",
+                },
+            },
+            "expected_intent": "explain_result",
+            "expected_goal": "",
+            "expected_depth": "",
+            "expected_model": "S8050",
+            "expected_constraints": {},
+            "expected_explicit_constraints": {},
+            "expected_plan_constraints": {},
+            "expected_safety_behavior": [],
+            "expected_diagnosis": ["mostly_saturation"],
+            "expected_actions": ["inspect_abort_reason", "lower_limits_and_check_wiring"],
+            "notes": "runtime abort safety actions should count toward expected_actions soft visibility",
+        }
+    ]
+
+    report = evaluate_samples(samples)
+
+    assert report["soft_metrics"]["actions"]["accuracy"] == 1.0
+
+
 def test_agent_regression_dataset_includes_new_visibility_cases() -> None:
     samples = load_samples(REGRESSION_DATASET)
     texts = {sample["user_text"] for sample in samples}

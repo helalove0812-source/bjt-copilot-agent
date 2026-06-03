@@ -25,6 +25,45 @@ def test_contextual_intent_modifies_existing_plan_current_limit() -> None:
     assert plan.ic_limit_a == 0.01
 
 
+def test_contextual_intent_can_decrease_current_limit_relatively() -> None:
+    state = AIConversationState()
+    state.current_plan = build_test_plan(model="S8050", goal="beta", depth="standard")
+    original_limit = state.current_plan.ic_limit_a
+
+    intent = infer_intent_locally("把限制电流调小一点", state)
+    plan = apply_intent_to_plan(intent, state)
+
+    assert intent.action == "modify_plan"
+    assert intent.ic_limit_a == original_limit * 0.5
+    assert plan.ic_limit_a == original_limit * 0.5
+
+
+def test_contextual_intent_can_increase_current_limit_relatively() -> None:
+    state = AIConversationState()
+    state.current_plan = build_test_plan(model="S8050", goal="beta", depth="conservative")
+    original_limit = state.current_plan.ic_limit_a
+
+    intent = infer_intent_locally("把限制电流调大一点", state)
+    plan = apply_intent_to_plan(intent, state)
+
+    assert intent.action == "modify_plan"
+    assert intent.ic_limit_a == original_limit * 1.5
+    assert plan.ic_limit_a == original_limit * 1.5
+
+
+def test_contextual_intent_can_adjust_power_limit_relatively() -> None:
+    state = AIConversationState()
+    state.current_plan = build_test_plan(model="S8050", goal="beta", depth="standard")
+    original_limit = state.current_plan.power_limit_w
+
+    intent = infer_intent_locally("功耗上限也调小一点", state)
+    plan = apply_intent_to_plan(intent, state)
+
+    assert intent.action == "modify_plan"
+    assert intent.power_limit_w == original_limit * 0.5
+    assert plan.power_limit_w == original_limit * 0.5
+
+
 def test_local_ai_mode_does_not_call_cloud(monkeypatch) -> None:
     state = AIConversationState()
     state.current_plan = build_test_plan(model="S8050", goal="beta", depth="standard")

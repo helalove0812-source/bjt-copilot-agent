@@ -636,6 +636,9 @@ def test_execute_plan_api_exposes_aborted_agent_view(monkeypatch) -> None:
     assert result["agent_state"] == "aborted"
     assert result["execution_state"] == "aborted"
     assert result["blocked_reason"] == "runtime_abort"
+    safety_actions = [item["action"] for item in result["safety_action_items"]]
+    assert "inspect_abort_reason" in safety_actions
+    assert "lower_limits_and_check_wiring" in safety_actions
     assert "降低限值或检查接线后重试" in result["next_actions"]
     assert result["agent_steps"][-1]["label"] == "运行时安全中止"
 
