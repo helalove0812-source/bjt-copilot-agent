@@ -1,0 +1,8 @@
+-[x] 后端服务成功启动，FastAPI 能够通过 WebSocket 提供实时通信能力。
+-[x] 后端 `serial_manager` 能够正确打开模拟或真实串口并解析 BJT 测试数据帧。
+-[x] 前端 React 项目成功启动，整体呈现深色、极简的专业仪器工业风（Linear-style）。
+-[x] 侧边栏表单能够正常输入测试参数并发送启动指令至后端。
+-[x] 顶部状态栏能够实时且准确地反映测试状态切换（如从 ParamMeasure 到 CurveScan）及过流保护告警。
+-[x] 数据看板正确展示 Ib, Ic, β, VBE, VCE(sat) 的实时数值。
+-[x] ECharts 曲线图表能够根据 WebSocket 推送的数据点，动态绘制多条 Ic-VCE 输出特性曲线。
+-[x] 具备 CSV 原始数据和 PDF 格式的测试报告导出功能，导出的数据准确无误。

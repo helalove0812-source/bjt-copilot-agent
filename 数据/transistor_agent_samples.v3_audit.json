@@ -1,0 +1,21 @@
+{
+  "total": 1000,
+  "category_counts": {
+    "diagnosis": 240,
+    "plan": 280,
+    "modify": 260,
+    "safety": 110,
+    "context": 110
+  },
+  "samples_with_expected_explicit_constraints": 297,
+  "samples_with_expected_plan_constraints": 464,
+  "safety_behavior_counts": {
+    "unknown_model_fallback": 154,
+    "applied_conservative_defaults": 187,
+    "pnp_auto_execution_blocked": 174,
+    "blocked_hardware_execution": 30,
+    "requires_hardware_confirmation": 30
+  },
+  "removed_bad_plan_constraint_count": 0,
+  "changed_plan_constraint_count": 641
+}

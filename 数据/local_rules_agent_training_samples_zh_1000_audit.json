@@ -1,0 +1,55 @@
+{
+  "total": 1000,
+  "category_counts": {
+    "plan": 250,
+    "context": 180,
+    "safety": 120,
+    "modify": 200,
+    "diagnosis": 250
+  },
+  "intent_counts": {
+    "create_plan": 250,
+    "modify_plan": 368,
+    "safety_guard": 120,
+    "diagnose": 250,
+    "confirm_execute": 12
+  },
+  "goal_counts": {
+    "screening": 71,
+    "beta": 70,
+    "stress_test": 24,
+    "vce_sat": 55,
+    "ic_vce_curve": 66,
+    "beta_linearity": 55,
+    "full_test": 55,
+    "batch_screening": 24,
+    "failure_analysis": 15,
+    "pin_check": 15,
+    "leakage": 15,
+    "modify_plan": 33,
+    "execute_plan": 24,
+    "diagnose": 11,
+    "create_plan": 16,
+    "breakdown_test": 1
+  },
+  "model_counts_top20": {
+    "S8050": 412,
+    "SS8050": 39,
+    "S9013": 10,
+    "S9014": 10,
+    "S9018": 10,
+    "2N3904": 10,
+    "2N2222": 10,
+    "PN2222A": 10,
+    "BC547": 10,
+    "BC337": 10,
+    "2SC1815": 7,
+    "C945": 1
+  },
+  "unique_category_user_text_pairs": 882,
+  "note": "context 类保留了同一句用户话术在不同 current_plan 下的样本，因此 user_text 不强制全局唯一。",
+  "files": {
+    "jsonl": "/mnt/data/local_rules_agent_training_samples_zh_1000.jsonl",
+    "markdown": "/mnt/data/local_rules_agent_training_samples_zh_1000.md"
+  }
+}
