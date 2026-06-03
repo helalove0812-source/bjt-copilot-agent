@@ -1,12 +1,30 @@
 .DS_Store
+
+# Python
 __pycache__/
 .pytest_cache/
 .mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+env/
+ENV/
 .coverage
 htmlcov/
-analysis_out/
-frontend/node_modules/
-frontend/dist/
 *.pyc
 *.pyo
 *.pyd
+*.so
+
+# Logs and runtime output
+*.log
+analysis_out/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+.vite/
+
+# IDE / editor
+.idea/
+.vscode/
