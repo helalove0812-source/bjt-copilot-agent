@@ -344,6 +344,91 @@ def test_unknown_model_request_defaults_to_conservative_depth() -> None:
     assert state.pending_profile_model == "XYZ123"
 
 
+def test_uncertain_screening_without_model_uses_unknown_fallback_plan() -> None:
+    state = AIConversationState()
+
+    intent = infer_intent_locally("我不确定型号，先按低风险筛查", state)
+    plan = apply_intent_to_plan(intent, state)
+
+    assert intent.action == "create_plan"
+    assert intent.model is None
+    assert intent.depth == "conservative"
+    assert plan.model == "UNKNOWN"
+    assert plan.bjt_type == "UNKNOWN"
+    assert plan.profile["confidence"] == "fallback"
+
+
+def test_low_risk_uncertain_screening_sets_screening_goal() -> None:
+    state = AIConversationState()
+
+    intent = infer_intent_locally("我不确定型号，先按低风险筛查", state)
+    plan = apply_intent_to_plan(intent, state)
+
+    assert intent.action == "create_plan"
+    assert intent.goal == "screening"
+    assert intent.depth == "conservative"
+    assert plan.goal == "screening"
+    assert plan.bjt_type == "UNKNOWN"
+
+
+def test_abort_question_is_diagnosis_not_execution() -> None:
+    state = AIConversationState()
+
+    intent = infer_intent_locally("执行中止了，为什么", state)
+
+    assert intent.action == "explain_result"
+    assert "中止" in intent.response
+
+
+def test_model_extraction_skips_current_unit_tokens() -> None:
+    state = AIConversationState()
+
+    intent = infer_intent_locally("Ic 直接拉到 1A 给我测 2N3904", state)
+
+    assert intent.action == "create_plan"
+    assert intent.model == "2N3904"
+    assert intent.ic_limit_a == 1.0
+
+
+def test_overrated_current_request_keeps_intent_model_but_uses_unknown_fallback_plan() -> None:
+    state = AIConversationState()
+
+    intent = infer_intent_locally("Ic 直接拉到 1A 给我测 2N3904", state)
+    plan = apply_intent_to_plan(intent, state)
+
+    assert intent.model == "2N3904"
+    assert plan.model == "UNKNOWN"
+    assert plan.profile["confidence"] == "fallback"
+    assert any("2N3904" in note for note in plan.safety_notes)
+
+
+def test_staged_deepen_request_creates_conservative_plan_note() -> None:
+    state = AIConversationState()
+
+    intent = infer_intent_locally("先保守扫一下 S8050，如果 beta 正常再加深", state)
+    plan = apply_intent_to_plan(intent, state)
+
+    assert intent.action == "create_plan"
+    assert intent.model == "S8050"
+    assert intent.goal == "beta"
+    assert intent.depth == "conservative"
+    assert plan.depth == "conservative"
+    assert any("分阶段策略" in note for note in plan.safety_notes)
+
+
+def test_normal_result_deepen_request_modifies_current_plan() -> None:
+    state = AIConversationState()
+    state.current_plan = build_test_plan(model="S8050", goal="beta", depth="conservative")
+
+    intent = infer_intent_locally("结果正常，下一步加深测试", state)
+    plan = apply_intent_to_plan(intent, state)
+
+    assert intent.action == "modify_plan"
+    assert intent.depth == "deep"
+    assert plan.model == "S8050"
+    assert plan.depth == "deep"
+
+
 def test_pnp_request_defaults_to_screening_and_conservative() -> None:
     state = AIConversationState()
 

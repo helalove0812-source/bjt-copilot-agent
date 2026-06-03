@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 import json
 import os
 import re
@@ -208,6 +208,14 @@ def apply_intent_to_plan(intent: AIIntent, state: AIConversationState, *, cfg: H
     goal = intent.goal or (base.goal if base else "auto")
     depth = intent.depth or (base.depth if base else "standard")
     mode = intent.mode or (base.mode if base else "simulation")
+    requested_model = model
+    downgrade_reason = ""
+    if _requires_unknown_fallback_for_unsafe_current(intent, model):
+        downgrade_reason = (
+            f"用户请求的 Ic 上限超过 {model} 的资料额定值，计划已降级为 UNKNOWN 保守兜底；"
+            "接硬件前必须重新确认 datasheet、限流和器件身份。"
+        )
+        model = "UNKNOWN"
 
     plan = build_test_plan(
         model=model,
@@ -217,8 +225,19 @@ def apply_intent_to_plan(intent: AIIntent, state: AIConversationState, *, cfg: H
         cfg=cfg,
         profile_override=pending_profile_override,
     )
+    if downgrade_reason and not any(downgrade_reason in note for note in plan.safety_notes):
+        plan = replace(
+            plan,
+            safety_notes=plan.safety_notes + [downgrade_reason, f"原始用户提到型号：{requested_model}。"],
+        )
     if intent.ic_limit_a is not None or intent.power_limit_w is not None or intent.vcc_max is not None or intent.vbb_points is not None:
         plan = _copy_plan_with_overrides(plan, intent, cfg or HwConfig())
+    if "分阶段策略" in intent.response and not any("分阶段策略" in note for note in plan.safety_notes):
+        plan = replace(
+            plan,
+            safety_notes=plan.safety_notes
+            + ["分阶段策略：先低风险验证；若 beta、Ic 和工作区分布正常，再切换 deep 计划加密测试。"],
+        )
     if pending_profile_override and plan.model == pending_profile_override.model:
         state.clear_candidate_profile()
     return plan
@@ -251,6 +270,8 @@ def infer_intent_locally(text: str, state: AIConversationState, *, default_mode:
             return AIIntent(action="manage_profile_library", model=pending_model, response="cancel_pending_library_action")
         if any(word in text for word in ("确认", "继续")):
             return AIIntent(action="manage_profile_library", model=pending_model, response="confirm_pending_library_action")
+    if _looks_like_abort_question(text, lowered):
+        return AIIntent(action="explain_result", response="解释执行中止原因。")
     is_execution_request = any(word in lowered for word in ("执行", "run")) or any(word in text for word in ("执行测试", "跑全套", "上电跑", "跑一下"))
     explicit_execution_without_plan = (
         any(word in lowered for word in ("执行", "run"))
@@ -264,6 +285,12 @@ def infer_intent_locally(text: str, state: AIConversationState, *, default_mode:
         return AIIntent(action="modify_plan", response="自主优化当前测试计划。")
     if _looks_like_execution_comparison(text, lowered) and (state.execution_history or state.current_execution):
         return AIIntent(action="explain_result", response="对比最近两次执行结果。")
+    if state.current_plan and _looks_like_normal_then_deepen_request(text):
+        return AIIntent(
+            action="modify_plan",
+            depth="deep",
+            response="结果看起来正常，下一步切换为 deep 计划加密测试。",
+        )
     if "列出已保存型号" in text or "列出器件库" in text or "查看器件库" in text:
         return AIIntent(action="manage_profile_library", response="list_profiles")
     if ("查看 " in text or "打开 " in text or "定位 " in text) and "器件" in text or ("查看 " in text and _extract_context_model_guess(text) != "UNKNOWN"):
@@ -290,6 +317,8 @@ def infer_intent_locally(text: str, state: AIConversationState, *, default_mode:
                 return AIIntent(action="explain_result", response="解释刚才的测试结果或异常。")
             if state.current_plan:
                 return AIIntent(action="explain_result", response="对当前状况进行诊断。")
+            if _looks_like_standalone_fault_description(text, lowered):
+                return AIIntent(action="explain_result", response="根据故障描述给出诊断建议。")
 
     if state.candidate_profile and (_looks_like_profile_save_command(text, lowered) or _looks_like_profile_update_command(text, lowered)):
         if not _pending_profile_is_complete(state.candidate_profile.fields):
@@ -310,7 +339,7 @@ def infer_intent_locally(text: str, state: AIConversationState, *, default_mode:
     guessed_model = _extract_context_model_guess(text)
     has_model = guessed_model != "UNKNOWN"
     has_current = state.current_plan is not None
-    is_plan_edit = any(word in text for word in ("保守", "安全", "低压", "加密", "多测", "少一点", "降低", "提高", "不超过", "别超过", "上限", "限制", "改", "调整", "别动", "翻倍", "增加"))
+    is_plan_edit = any(word in text for word in ("保守", "安全", "低压", "加深", "深入", "加密", "多测", "少一点", "降低", "提高", "不超过", "别超过", "上限", "限制", "改", "调整", "别动", "翻倍", "增加"))
     action: IntentAction = "modify_plan" if has_current and (not has_model or is_plan_edit) else "create_plan"
     
     if action == "create_plan" and "测" not in text and "画" not in text and "筛选" not in text and "过一下" not in text:
@@ -345,8 +374,12 @@ def infer_intent_locally(text: str, state: AIConversationState, *, default_mode:
             goal = "screening"
         if goal == "screening" and depth == "standard":
             depth = "conservative"
+    if _looks_like_uncertain_screening_request(text) and depth == "standard":
+        depth = "conservative"
+    if _looks_like_explicit_low_risk_screening(text) and goal == "auto":
+        goal = "screening"
 
-    return AIIntent(
+    intent = AIIntent(
         action=action,
         model=guessed_model if has_model else None,
         goal=goal if goal != "auto" else None,
@@ -358,10 +391,22 @@ def infer_intent_locally(text: str, state: AIConversationState, *, default_mode:
         vbb_points=vbb_points,
         response=rule.response or "已根据上下文理解你的测试需求。",
     )
+    if action in {"create_plan", "modify_plan"} and _looks_like_staged_deepen_request(text):
+        return _with_staged_deepen_response(intent)
+    return intent
 
 
 def _is_unknown_model_request(model: str | None) -> bool:
     return bool(model and model != "UNKNOWN" and lookup_transistor(model).confidence == "fallback")
+
+
+def _requires_unknown_fallback_for_unsafe_current(intent: AIIntent, model: str) -> bool:
+    if intent.ic_limit_a is None or model == "UNKNOWN":
+        return False
+    profile = lookup_transistor(model)
+    if profile.confidence == "fallback":
+        return False
+    return float(intent.ic_limit_a) > float(profile.ic_max_a)
 
 
 def _looks_like_execution_comparison(text: str, lowered: str) -> bool:
@@ -373,6 +418,91 @@ def _looks_like_execution_comparison(text: str, lowered: str) -> bool:
 
 def _looks_like_autonomous_refine(text: str) -> bool:
     return any(word in text for word in ("优化", "自动调整", "自己看着办", "下一步", "你来定", "帮我调整", "改进计划"))
+
+
+def _looks_like_abort_question(text: str, lowered: str) -> bool:
+    abort_words = ("中止", "停止", "abort", "aborted")
+    question_words = ("为什么", "原因", "怎么回事", "解释", "诊断")
+    return any(word in lowered for word in abort_words) and any(word in text for word in question_words)
+
+
+def _looks_like_standalone_fault_description(text: str, lowered: str) -> bool:
+    del lowered
+    fault_words = (
+        "短路",
+        "蜂鸣",
+        "不导通",
+        "断了",
+        "功耗",
+        "超了",
+        "全是0",
+        "全是 0",
+        "当 NPN",
+        "当 PNP",
+        "对调",
+        "接反",
+        "引脚顺序",
+        "脚位",
+        "hFE",
+        "hfe",
+        "beta 低",
+        "Beta 低",
+        "偏低",
+        "低一大截",
+        "方向不对",
+        "pd 超过",
+        "太大功耗",
+    )
+    return any(word in text for word in fault_words)
+
+
+def _looks_like_uncertain_screening_request(text: str) -> bool:
+    uncertainty_words = ("不确定型号", "型号不确定", "不知道型号", "没丝印", "丝印不清", "拆机件", "不确定管型")
+    screening_words = ("低风险", "保守", "筛查", "筛一下", "验管", "先测", "先看")
+    return any(word in text for word in uncertainty_words) or (
+        "不确定" in text and any(word in text for word in screening_words)
+    )
+
+
+def _looks_like_explicit_low_risk_screening(text: str) -> bool:
+    return any(word in text for word in ("低风险筛查", "低风险", "筛查", "筛一下"))
+
+
+def _looks_like_staged_deepen_request(text: str) -> bool:
+    first_words = ("先", "第一步", "先保守", "先低风险")
+    condition_words = ("如果", "正常", "通过", "没问题", "稳定")
+    deepen_words = ("再加深", "再深入", "再加密", "再详细", "加深", "加密")
+    return (
+        any(word in text for word in first_words)
+        and any(word in text for word in condition_words)
+        and any(word in text for word in deepen_words)
+    )
+
+
+def _looks_like_normal_then_deepen_request(text: str) -> bool:
+    normal_words = ("正常", "通过", "没问题", "稳定", "结果还行")
+    deepen_words = ("加深", "深入", "加密", "更详细", "下一步")
+    return any(word in text for word in normal_words) and any(word in text for word in deepen_words)
+
+
+def _with_staged_deepen_response(intent: AIIntent) -> AIIntent:
+    note = "分阶段策略：先低风险验证；若 beta、Ic 和工作区分布正常，再切换 deep 计划加密测试。"
+    response = intent.response or ""
+    if note not in response:
+        response = (response.rstrip("。") + "。" if response else "") + note
+    return AIIntent(
+        action=intent.action,
+        model=intent.model,
+        goal=intent.goal,
+        depth="conservative",
+        mode=intent.mode,
+        ic_limit_a=intent.ic_limit_a,
+        power_limit_w=intent.power_limit_w,
+        vcc_max=intent.vcc_max,
+        vbb_points=intent.vbb_points,
+        library_patch=intent.library_patch,
+        response=response,
+    )
 
 
 def _compare_recent_executions(previous: dict, latest: dict) -> str:
@@ -566,10 +696,21 @@ def _extract_current_limit_a(text: str) -> float | None:
 
 
 def _extract_context_model_guess(text: str) -> str:
-    guess = extract_model_guess(text)
-    if re.fullmatch(r"\d+(?:MA|MV|V|A|W|MW)", guess.upper()):
-        return "UNKNOWN"
-    return guess
+    for guess in _model_candidates(text):
+        upper = guess.upper()
+        if re.fullmatch(r"\d+(?:MA|MV|V|A|W|MW)", upper):
+            continue
+        return guess
+    return "UNKNOWN"
+
+
+def _model_candidates(text: str) -> list[str]:
+    candidates: list[str] = []
+    for raw in text.replace(",", " ").replace("，", " ").split():
+        token = "".join(ch for ch in raw if ch.isalnum() or ch in "-_")
+        if any(ch.isdigit() for ch in token) and any(ch.isalpha() for ch in token):
+            candidates.append(token)
+    return candidates
 
 
 def _extract_library_update_patch(text: str) -> dict[str, object]:

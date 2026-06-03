@@ -12,11 +12,12 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from ai.conversation import AIConversationState, apply_intent_to_plan, infer_intent_locally
-from ai.rules import infer_rule_decision
+from ai.agent import TestAgent
+from ai.rules import diagnose_tags, infer_rule_decision
 from ai.test_planner import build_test_plan
 
 
-DEFAULT_DATASET = Path("数据/transistor_agent_samples.jsonl")
+DEFAULT_DATASET = Path("数据/transistor_agent_samples.v3.jsonl")
 
 INTENT_ALIASES = {
     "diagnose": {"explain_result", "answer"},
@@ -102,41 +103,71 @@ def evaluate_samples(samples: list[dict[str, Any]]) -> dict[str, Any]:
     parser_constraint_mismatches: list[dict[str, Any]] = []
     plan_constraint_mismatches: list[dict[str, Any]] = []
     safety_behavior_mismatches: list[dict[str, Any]] = []
+    model_mismatches: list[dict[str, Any]] = []
+    diagnosis_mismatches: list[dict[str, Any]] = []
+    action_mismatches: list[dict[str, Any]] = []
+    category_breakdown: dict[str, Counter[str]] = {}
 
     for sample in samples:
-        category_counts[str(sample.get("category") or "unknown")] += 1
+        category = str(sample.get("category") or "unknown")
+        category_counts[category] += 1
+        category_counters = category_breakdown.setdefault(category, Counter())
+        category_counters["total"] += 1
         state = _state_from_sample(sample)
         text = str(sample.get("user_text") or "")
         intent = infer_intent_locally(text, state)
         rule = infer_rule_decision(text, {"has_plan": state.current_plan is not None})
+        actual_model = _actual_model(sample, state, intent)
+        actual_diagnosis = _actual_diagnosis_tags(sample, text, intent)
+        actual_actions = _actual_actions(sample, intent, actual_diagnosis)
 
         expected_intent = str(sample.get("expected_intent") or "")
         if _intent_matches(expected_intent, intent.action):
             counters["intent_ok"] += 1
+            category_counters["intent_ok"] += 1
         else:
             counters["intent_bad"] += 1
+            category_counters["intent_bad"] += 1
             _append_example(intent_mismatches, sample, actual=intent.action, expected=expected_intent)
 
         expected_goal = _normalize_goal(str(sample.get("expected_goal") or ""))
         if expected_goal:
             counters["goal_checked"] += 1
+            category_counters["goal_checked"] += 1
             actual_goal = intent.goal or rule.goal or "auto"
             if actual_goal == expected_goal:
                 counters["goal_ok"] += 1
+                category_counters["goal_ok"] += 1
             else:
                 counters["goal_bad"] += 1
+                category_counters["goal_bad"] += 1
                 _append_example(goal_mismatches, sample, actual=actual_goal, expected=expected_goal)
 
         expected_depth = str(sample.get("expected_depth") or "")
         expected_depth = DEPTH_ALIASES.get(expected_depth, expected_depth)
         if expected_depth in SUPPORTED_DEPTHS:
             counters["depth_checked"] += 1
+            category_counters["depth_checked"] += 1
             actual_depth = intent.depth or rule.depth
             if actual_depth == expected_depth:
                 counters["depth_ok"] += 1
+                category_counters["depth_ok"] += 1
             else:
                 counters["depth_bad"] += 1
+                category_counters["depth_bad"] += 1
                 _append_example(depth_mismatches, sample, actual=actual_depth, expected=expected_depth)
+
+        expected_model = str(sample.get("expected_model") or "").strip()
+        if expected_model:
+            counters["soft_model_checked"] += 1
+            category_counters["soft_model_checked"] += 1
+            if str(actual_model or "").upper() == expected_model.upper():
+                counters["soft_model_ok"] += 1
+                category_counters["soft_model_ok"] += 1
+            else:
+                counters["soft_model_bad"] += 1
+                category_counters["soft_model_bad"] += 1
+                _append_example(model_mismatches, sample, actual=actual_model, expected=expected_model)
 
         plan = None
         if intent.action in {"create_plan", "modify_plan"}:
@@ -150,10 +181,13 @@ def evaluate_samples(samples: list[dict[str, Any]]) -> dict[str, Any]:
             actual_behaviors = _actual_safety_behaviors(sample, intent, plan)
             for behavior in expected_behaviors:
                 counters["safety_behavior_checked"] += 1
+                category_counters["safety_behavior_checked"] += 1
                 if behavior in actual_behaviors:
                     counters["safety_behavior_ok"] += 1
+                    category_counters["safety_behavior_ok"] += 1
                 else:
                     counters["safety_behavior_bad"] += 1
+                    category_counters["safety_behavior_bad"] += 1
                     _append_example(
                         safety_behavior_mismatches,
                         sample,
@@ -172,10 +206,13 @@ def evaluate_samples(samples: list[dict[str, Any]]) -> dict[str, Any]:
             if expected is None:
                 continue
             counters[f"{key}_checked"] += 1
+            category_counters[f"{key}_checked"] += 1
             if _constraint_matches(actual, expected):
                 counters[f"{key}_ok"] += 1
+                category_counters[f"{key}_ok"] += 1
             else:
                 counters[f"{key}_bad"] += 1
+                category_counters[f"{key}_bad"] += 1
                 _append_example(parser_constraint_mismatches, sample, actual=actual, expected={key: expected})
 
         plan_constraints = _constraints_for(sample, "expected_plan_constraints")
@@ -185,11 +222,38 @@ def evaluate_samples(samples: list[dict[str, Any]]) -> dict[str, Any]:
                 continue
             plan_actual = _plan_constraint_value(plan, key)
             counters[f"plan_{key}_checked"] += 1
+            category_counters[f"plan_{key}_checked"] += 1
             if _constraint_matches(plan_actual, expected):
                 counters[f"plan_{key}_ok"] += 1
+                category_counters[f"plan_{key}_ok"] += 1
             else:
                 counters[f"plan_{key}_bad"] += 1
+                category_counters[f"plan_{key}_bad"] += 1
                 _append_example(plan_constraint_mismatches, sample, actual=plan_actual, expected={key: expected})
+
+        expected_diagnosis = [str(item) for item in sample.get("expected_diagnosis", []) if str(item)]
+        if expected_diagnosis:
+            counters["soft_diagnosis_checked"] += 1
+            category_counters["soft_diagnosis_checked"] += 1
+            if _list_soft_match(actual_diagnosis, expected_diagnosis):
+                counters["soft_diagnosis_ok"] += 1
+                category_counters["soft_diagnosis_ok"] += 1
+            else:
+                counters["soft_diagnosis_bad"] += 1
+                category_counters["soft_diagnosis_bad"] += 1
+                _append_example(diagnosis_mismatches, sample, actual=actual_diagnosis, expected=expected_diagnosis)
+
+        expected_actions = [str(item) for item in sample.get("expected_actions", []) if str(item)]
+        if expected_actions:
+            counters["soft_actions_checked"] += 1
+            category_counters["soft_actions_checked"] += 1
+            if _list_soft_match(actual_actions, expected_actions):
+                counters["soft_actions_ok"] += 1
+                category_counters["soft_actions_ok"] += 1
+            else:
+                counters["soft_actions_bad"] += 1
+                category_counters["soft_actions_bad"] += 1
+                _append_example(action_mismatches, sample, actual=actual_actions, expected=expected_actions)
 
     return {
         "total": len(samples),
@@ -236,6 +300,31 @@ def evaluate_samples(samples: list[dict[str, Any]]) -> dict[str, Any]:
             "plan_constraints": plan_constraint_mismatches,
             "safety_behavior": safety_behavior_mismatches,
         },
+        "soft_metrics": {
+            "model": _soft_metric_payload(
+                counters,
+                checked_key="soft_model_checked",
+                ok_key="soft_model_ok",
+                bad_key="soft_model_bad",
+                mismatches=model_mismatches,
+            ),
+            "diagnosis": _soft_metric_payload(
+                counters,
+                checked_key="soft_diagnosis_checked",
+                ok_key="soft_diagnosis_ok",
+                bad_key="soft_diagnosis_bad",
+                mismatches=diagnosis_mismatches,
+            ),
+            "actions": _soft_metric_payload(
+                counters,
+                checked_key="soft_actions_checked",
+                ok_key="soft_actions_ok",
+                bad_key="soft_actions_bad",
+                mismatches=action_mismatches,
+            ),
+        },
+        "category_breakdown": _category_breakdown_payload(category_breakdown),
+        "non_gating_fields": ["expected_model", "expected_diagnosis", "expected_actions"],
         "raw_counts": dict(counters),
     }
 
@@ -272,6 +361,11 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Parser explicit constraint accuracy: {format_acc(report['parser']['explicit_constraint_accuracy'])}")
         print(f"Plan safety/policy accuracy: {format_acc(report['plan']['safety_and_policy_accuracy'])}")
         print(f"Safety behavior accuracy: {format_acc(report['safety']['behavior_accuracy'])}")
+        print("Soft metrics:")
+        print(json.dumps(report["soft_metrics"], ensure_ascii=False, indent=2))
+        print("Category breakdown:")
+        print(json.dumps(report["category_breakdown"], ensure_ascii=False, indent=2))
+        print(f"Non-gating fields: {report['non_gating_fields']}")
         print("Mismatch examples:")
         print(json.dumps(report["mismatch_examples"], ensure_ascii=False, indent=2))
 
@@ -497,6 +591,192 @@ def _append_example(items: list[dict[str, Any]], sample: dict[str, Any], *, actu
             "actual": actual,
         }
     )
+
+
+def _soft_metric_payload(
+    counters: Counter[str],
+    *,
+    checked_key: str,
+    ok_key: str,
+    bad_key: str,
+    mismatches: list[dict[str, Any]],
+) -> dict[str, Any]:
+    return {
+        "checked": counters.get(checked_key, 0),
+        "ok": counters.get(ok_key, 0),
+        "mismatch": counters.get(bad_key, 0),
+        "accuracy": _accuracy(counters.get(ok_key, 0), counters.get(bad_key, 0)),
+        "mismatch_examples": mismatches,
+        "missing_expected_tags": _missing_expected_tags(mismatches),
+        "missing_by_category": _missing_expected_tags_by_category(mismatches),
+        "confusion_pairs": _confusion_pairs(mismatches),
+    }
+
+
+def _as_list(value: Any) -> list[str]:
+    if isinstance(value, list):
+        return [str(item) for item in value if str(item)]
+    if value is None:
+        return []
+    return [str(value)] if str(value) else []
+
+
+def _missing_expected_tags(mismatches: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    counter: Counter[str] = Counter()
+    for item in mismatches:
+        expected = set(_as_list(item.get("expected")))
+        actual = set(_as_list(item.get("actual")))
+        for tag in sorted(expected - actual):
+            counter[tag] += 1
+    return _counter_payload(counter)
+
+
+def _missing_expected_tags_by_category(mismatches: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    counters: dict[str, Counter[str]] = {}
+    for item in mismatches:
+        category = str(item.get("category") or "unknown")
+        expected = set(_as_list(item.get("expected")))
+        actual = set(_as_list(item.get("actual")))
+        for tag in sorted(expected - actual):
+            counters.setdefault(category, Counter())[tag] += 1
+    return {category: _counter_payload(counter) for category, counter in sorted(counters.items())}
+
+
+def _confusion_pairs(mismatches: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    counter: Counter[tuple[str, str]] = Counter()
+    for item in mismatches:
+        expected = set(_as_list(item.get("expected")))
+        actual = set(_as_list(item.get("actual")))
+        missing = expected - actual
+        if not missing or not actual:
+            continue
+        for expected_tag in sorted(missing):
+            for actual_tag in sorted(actual):
+                counter[(expected_tag, actual_tag)] += 1
+    return [
+        {"expected_tag": expected, "actual_tag": actual, "count": count}
+        for (expected, actual), count in sorted(counter.items(), key=lambda item: (-item[1], item[0][0], item[0][1]))
+    ]
+
+
+def _counter_payload(counter: Counter[str]) -> list[dict[str, Any]]:
+    return [
+        {"tag": tag, "count": count}
+        for tag, count in sorted(counter.items(), key=lambda item: (-item[1], item[0]))
+    ]
+
+
+def _category_breakdown_payload(category_breakdown: dict[str, Counter[str]]) -> dict[str, Any]:
+    payload: dict[str, Any] = {}
+    for category, counters in category_breakdown.items():
+        payload[category] = {
+            "total": counters.get("total", 0),
+            "intent_accuracy": _accuracy(counters.get("intent_ok", 0), counters.get("intent_bad", 0)),
+            "goal_accuracy": _accuracy(counters.get("goal_ok", 0), counters.get("goal_bad", 0)),
+            "depth_accuracy": _accuracy(counters.get("depth_ok", 0), counters.get("depth_bad", 0)),
+            "soft_model_accuracy": _accuracy(counters.get("soft_model_ok", 0), counters.get("soft_model_bad", 0)),
+            "soft_diagnosis_accuracy": _accuracy(counters.get("soft_diagnosis_ok", 0), counters.get("soft_diagnosis_bad", 0)),
+            "soft_actions_accuracy": _accuracy(counters.get("soft_actions_ok", 0), counters.get("soft_actions_bad", 0)),
+            "top_weak_signals": _top_weak_signals(counters),
+        }
+    return payload
+
+
+def _top_weak_signals(counters: Counter[str]) -> list[str]:
+    signals = {
+        "intent": counters.get("intent_bad", 0),
+        "goal": counters.get("goal_bad", 0),
+        "depth": counters.get("depth_bad", 0),
+        "model": counters.get("soft_model_bad", 0),
+        "diagnosis": counters.get("soft_diagnosis_bad", 0),
+        "actions": counters.get("soft_actions_bad", 0),
+    }
+    return [name for name, count in sorted(signals.items(), key=lambda item: (-item[1], item[0])) if count > 0][:3]
+
+
+def _actual_model(sample: dict[str, Any], state: AIConversationState, intent: Any) -> str:
+    for candidate in (
+        getattr(intent, "model", None),
+        getattr(state.current_plan, "model", None) if state.current_plan else None,
+        sample.get("context", {}).get("current_plan", {}).get("model") if isinstance(sample.get("context"), dict) else None,
+    ):
+        value = str(candidate or "").strip()
+        if value:
+            return value.upper()
+    return "UNKNOWN"
+
+
+def _actual_diagnosis_tags(sample: dict[str, Any], text: str, intent: Any) -> list[str]:
+    if intent.action not in {"explain_result", "answer"}:
+        return []
+    context = sample.get("context", {}) if isinstance(sample.get("context"), dict) else {}
+    return diagnose_tags(
+        text,
+        logs=[str(item) for item in context.get("logs", [])],
+        measurements=context.get("measurements", []),
+    )
+
+
+def _actual_actions(sample: dict[str, Any], intent: Any, actual_diagnosis: list[str]) -> list[str]:
+    actions: list[str] = []
+    structured_actions = _actual_actions_from_agent_output(sample)
+    actions.extend(structured_actions)
+    text = str(sample.get("user_text") or "")
+    if intent.action:
+        actions.append(intent.action)
+    diagnosis_action_map = {
+        "mostly_cutoff": ["raise_ib", "modify_plan"],
+        "mostly_saturation": ["raise_vcc", "modify_plan"],
+        "saturation_suspected": ["suggest_next_step"],
+        "bce_reversed": ["check_wiring", "prompt_pinout_confirm"],
+        "low_beta": ["flag_out_of_spec", "suggest_failure_analysis"],
+        "open_circuit": ["check_wiring", "suggest_failure_analysis"],
+        "device_not_found": ["check_connection", "suggest_simulation"],
+        "scope_timeout": ["check_trigger", "retry_with_lower_speed"],
+        "beta_unstable": ["increase_averaging", "check_wiring"],
+        "overcurrent": ["clamp_current", "abort_run"],
+    }
+    for tag in actual_diagnosis:
+        actions.extend(diagnosis_action_map.get(tag, []))
+    if intent.action == "modify_plan":
+        lowered = text.lower()
+        if any(word in text for word in ("不超过", "别超过", "不要超过")) and any(token in lowered for token in ("ic", "电流", "ma", "a")):
+            actions.append("clamp_current")
+        if any(word in text for word in ("多扫几个", "多测几组", "再深入一点", "更深入一点", "加深")) and any(
+            token in lowered for token in ("ib", "档", "点", "组")
+        ):
+            actions.append("increase_points")
+    if any(word in text for word in ("列出已保存型号", "列出器件库", "查看器件库", "查看 ")) and "器件" in text:
+        actions.append("manage_profile_library")
+    return sorted(set(action for action in actions if action))
+
+
+def _actual_actions_from_agent_output(sample: dict[str, Any]) -> list[str]:
+    state = _state_from_sample(sample)
+    text = str(sample.get("user_text") or "")
+    try:
+        result = TestAgent(state).run_turn(text, default_mode="simulation")
+    except Exception:
+        return []
+
+    actions: list[str] = []
+    for item in result.next_action_items:
+        action = str(item.get("action") or "").strip()
+        if action:
+            actions.append(action)
+    for item in getattr(result, "completed_action_items", []):
+        action = str(item.get("action") or "").strip()
+        if action:
+            actions.append(action)
+    if result.intent.action:
+        actions.append(result.intent.action)
+    return sorted(set(actions))
+
+
+def _list_soft_match(actual: list[str], expected: list[str]) -> bool:
+    actual_set = {str(item) for item in actual}
+    expected_set = {str(item) for item in expected}
+    return bool(expected_set) and expected_set.issubset(actual_set)
 
 
 if __name__ == "__main__":

@@ -15,6 +15,7 @@ from app.services import (
     run_scan_curves,
     run_scope_check,
 )
+from ai.action_taxonomy import action_items_from_labels
 from ai.assistant import summarize_plan_with_ai
 from ai.autonomy import refine_plan_after_execution
 from ai.conversation import (
@@ -25,7 +26,7 @@ from ai.conversation import (
 )
 from ai.rules import diagnose_context
 from ai.test_planner import TestPlan, plan_from_text
-from ai.tools import execute_plan
+from ai.tools import execute_plan, preflight_plan
 from ai.user_profile_store import (
     DuplicateUserProfileError,
     create_user_profile,
@@ -409,6 +410,36 @@ def _execution_agent_view(result: dict) -> dict:
     }
 
 
+def _preflight_agent_view(result: dict) -> dict:
+    steps = [_agent_step("done", "硬件预检", str(result.get("mode") or "unknown"))]
+    summary = str(result.get("preflight_summary") or "")
+    if result.get("ok_to_execute"):
+        steps.append(_agent_step("ready", "策略允许", summary or "仍未打开真实输出"))
+        return {
+            "agent_state": "preflight_ready",
+            "required_inputs": [],
+            "next_actions": ["输入确认短语后执行硬件测试", "先运行仿真复核"],
+            "agent_steps": steps,
+        }
+    if result.get("requires_confirmation"):
+        steps.append(_agent_step("waiting", "等待硬件确认", summary or "未打开真实输出"))
+        return {
+            "agent_state": "awaiting_hardware_confirmation",
+            "required_inputs": ["确认硬件执行"],
+            "next_actions": ["输入确认短语", "取消或修改当前计划"],
+            "agent_steps": steps,
+        }
+    reasons = result.get("reasons") if isinstance(result.get("reasons"), list) else []
+    detail = summary or (str(reasons[0]) if reasons else "策略阻止执行")
+    steps.append(_agent_step("blocked", "策略阻止", detail))
+    return {
+        "agent_state": "preflight_blocked",
+        "required_inputs": [],
+        "next_actions": ["查看阻止原因", "修改计划或切换为仿真模式"],
+        "agent_steps": steps,
+    }
+
+
 def _pending_library_action_detail(action: dict[str, object]) -> str:
     action_name = str(action.get("action") or "")
     model = str(action.get("model") or "UNKNOWN")
@@ -553,6 +584,9 @@ class ApiHandler(BaseHTTPRequestHandler):
             return
         if self.path == "/api/execute-plan":
             self._handle_execute_plan()
+            return
+        if self.path == "/api/preflight-plan":
+            self._handle_preflight_plan()
             return
         if self.path == "/api/run-action":
             self._handle_run_action()
@@ -749,6 +783,23 @@ class ApiHandler(BaseHTTPRequestHandler):
         except Exception as exc:
             self._send_json(400, {"ok": False, "error": str(exc)})
 
+    def _handle_preflight_plan(self) -> None:
+        try:
+            payload = self._read_payload()
+            mode = str(payload.get("mode") or "hardware")
+            if mode not in {"hardware", "simulation"}:
+                raise ValueError("unsupported mode")
+            plan = _plan_from_mapping(payload.get("plan"))
+            result = preflight_plan(
+                plan,
+                mode=mode,
+                allow_hardware=bool(payload.get("allow_hardware")),
+                token_valid=_hardware_token_valid_from_payload(mode, payload),
+            )
+            self._send_json(200, {"ok": True, "preflight": result, **_preflight_agent_view(result)})
+        except Exception as exc:
+            self._send_json(400, {"ok": False, "error": str(exc)})
+
     def _handle_run_action(self) -> None:
         try:
             payload = self._read_payload()
@@ -893,6 +944,8 @@ class ApiHandler(BaseHTTPRequestHandler):
                 )
             else:
                 agent_view["completed_actions"] = completed_actions
+            agent_view["next_action_items"] = action_items_from_labels(agent_view.get("next_actions", []))
+            agent_view["completed_action_items"] = action_items_from_labels(completed_actions)
             self._send_json(
                 200,
                 {

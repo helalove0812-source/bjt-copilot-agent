@@ -45,6 +45,11 @@ def refine_plan_after_execution(
         _increase_vbb_resolution(data)
         data["depth"] = "deep"
         completed_actions.append("有效 active 点偏少，已加密 Vbb 扫描并切换为 deep 深度。")
+    elif _is_staged_strategy(plan) and _stable_active_result(stats):
+        _increase_vbb_resolution(data)
+        data["depth"] = "deep"
+        data["sample_count"] = min(max(int(data["sample_count"]), 2048) * 2, 8192)
+        completed_actions.append("保守阶段结果稳定，已切换为 deep 深度并加密 Vbb 扫描。")
     else:
         data["sample_count"] = min(max(int(data["sample_count"]), 2048) * 2, 8192)
         completed_actions.append("结果较稳定，已提高采样数以改善统计质量。")
@@ -81,6 +86,18 @@ def _needs_more_resolution(stats: dict) -> bool:
     point_count = int(stats.get("point_count") or 0)
     active = int(counts.get("active", 0))
     return point_count > 0 and active < 2
+
+
+def _is_staged_strategy(plan: TestPlan) -> bool:
+    return any("分阶段策略" in note for note in plan.safety_notes)
+
+
+def _stable_active_result(stats: dict) -> bool:
+    counts = stats.get("region_counts") or {}
+    active = int(counts.get("active", 0))
+    saturation = int(counts.get("saturation", 0))
+    cutoff = int(counts.get("cutoff", 0))
+    return active >= 2 and saturation == 0 and cutoff == 0 and not stats.get("aborted")
 
 
 def _scale_limits(data: dict, *, current_scale: float, power_scale: float, vcc_scale: float) -> None:

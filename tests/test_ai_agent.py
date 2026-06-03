@@ -247,6 +247,13 @@ def test_agent_plan_result_exposes_next_actions(monkeypatch) -> None:
     assert result.required_inputs == []
     assert "运行仿真" in result.next_actions
     assert "请求硬件执行确认" in result.next_actions
+    assert any(
+        item["id"] == "run_simulation" and item["label"] == "运行仿真" and item["kind"] == "execute"
+        for item in result.next_action_items
+    )
+    assert any(item["action"] == "run_simulation" for item in result.next_action_items)
+    assert any(item["priority"] == "medium" for item in result.next_action_items if item["action"] == "run_simulation")
+    assert any(item["id"] == "request_hardware_confirmation" for item in result.to_dict()["next_action_items"])
     assert result.agent_steps[-1]["label"] == "生成测试计划"
 
 
@@ -264,6 +271,20 @@ def test_agent_modifies_existing_plan_with_context(monkeypatch) -> None:
     assert result.plan.ic_limit_a == 0.01
     assert len(result.plan.static_points) == 10
     assert agent.state.current_plan == result.plan
+
+
+def test_agent_exposes_staged_deepen_next_actions(monkeypatch) -> None:
+    monkeypatch.setenv("BJT_AI_MODE", "local")
+    agent = TestAgent()
+
+    result = agent.run_turn("先保守扫一下 S8050，如果 beta 正常再加深")
+
+    assert result.intent.action == "create_plan"
+    assert result.plan is not None
+    assert result.plan.depth == "conservative"
+    assert any("分阶段策略" in note for note in result.plan.safety_notes)
+    assert "先运行保守仿真" in result.next_actions
+    assert "结果正常后加深计划" in result.next_actions
 
 
 def test_agent_returns_guidance_response_for_pnp_plan(monkeypatch) -> None:
@@ -295,6 +316,78 @@ def test_agent_executes_current_plan_in_simulation(monkeypatch, tmp_path) -> Non
     assert agent.state.current_execution == result.execution
     assert agent.state.execution_history[-1] == result.execution
     assert (tmp_path / "ai_execution.json").exists()
+
+
+def test_agent_suggests_lower_vbb_after_saturation_heavy_result(monkeypatch) -> None:
+    monkeypatch.setenv("BJT_AI_MODE", "local")
+    state = AIConversationState()
+    state.current_plan = build_test_plan(model="S8050", goal="beta", depth="standard")
+    agent = TestAgent(state)
+
+    def fake_execute_plan(*_args, **_kwargs):
+        del _args, _kwargs
+        return {
+            "mode": "simulation",
+            "serial": "SIM-SAT",
+            "measurements": [
+                {"beta": 80.0, "region": "saturation", "Ic": 0.004, "Vce": 0.08},
+                {"beta": 90.0, "region": "saturation", "Ic": 0.005, "Vce": 0.07},
+                {"beta": 120.0, "region": "active", "Ic": 0.003, "Vce": 2.1},
+            ],
+        }
+
+    monkeypatch.setattr("ai.agent.execute_plan", fake_execute_plan)
+
+    result = agent.run_turn("开始执行仿真")
+
+    assert "降低 Vbb 上沿后复测" in result.next_actions
+    assert "检查 Vce 工作窗口" in result.next_actions
+    assert result.next_action_items[0]["id"] == "lower_vbb_and_rerun"
+    assert result.next_action_items[1]["id"] == "inspect_vce_window"
+    assert "mostly_saturation" in result.diagnosis_tags
+    assert "mostly_saturation" in result.to_dict()["diagnosis_tags"]
+
+
+def test_agent_suggests_deepen_after_stable_active_result(monkeypatch) -> None:
+    monkeypatch.setenv("BJT_AI_MODE", "local")
+    state = AIConversationState()
+    state.current_plan = build_test_plan(model="S8050", goal="beta", depth="conservative")
+    agent = TestAgent(state)
+
+    def fake_execute_plan(*_args, **_kwargs):
+        del _args, _kwargs
+        return {
+            "mode": "simulation",
+            "serial": "SIM-ACTIVE",
+            "measurements": [
+                {"beta": 90.0, "region": "active", "Ic": 0.001, "Vce": 2.8},
+                {"beta": 120.0, "region": "active", "Ic": 0.002, "Vce": 2.5},
+                {"beta": 140.0, "region": "active", "Ic": 0.003, "Vce": 2.2},
+            ],
+        }
+
+    monkeypatch.setattr("ai.agent.execute_plan", fake_execute_plan)
+
+    result = agent.run_turn("开始执行仿真")
+
+    assert "结果稳定后加深计划" in result.next_actions
+    assert "解释结果" in result.next_actions
+    assert result.next_action_items[0]["id"] == "deepen_plan_after_stable_result"
+    assert result.next_action_items[1]["id"] == "explain_result"
+
+
+def test_agent_exposes_diagnosis_tags_for_fault_text(monkeypatch) -> None:
+    monkeypatch.setenv("BJT_AI_MODE", "local")
+    state = AIConversationState()
+    state.current_plan = build_test_plan(model="S8050", goal="beta", depth="standard")
+    agent = TestAgent(state)
+
+    result = agent.run_turn("刚才 Ic 过流了，而且像是 C/E 接反")
+
+    assert result.agent_state == "diagnosing"
+    assert {"overcurrent", "bce_reversed"}.issubset(set(result.diagnosis_tags))
+    assert {"overcurrent", "bce_reversed"}.issubset(set(result.to_dict()["diagnosis_tags"]))
+    assert any(item["id"] == "modify_plan_from_diagnosis" for item in result.next_action_items)
 
 
 def test_agent_compares_two_recent_executions(monkeypatch) -> None:
@@ -364,10 +457,51 @@ def test_agent_autonomously_refines_plan_after_aborted_execution(monkeypatch) ->
     assert result.plan.depth == "conservative"
     assert result.plan.ic_limit_a < original_ic_limit
     assert result.completed_actions
+    assert hasattr(result, "completed_action_items")
+    assert {"modify_plan", "clamp_current", "clamp_power"}.issubset(
+        {item["action"] for item in result.completed_action_items}
+    )
     assert "自动生成下一版安全计划" in result.response
     assert agent.state.current_plan == result.plan
     assert agent.state.agent_activity_history[-1]["type"] == "plan_refined"
     assert agent.state.agent_activity_history[-1]["completed_actions"] == result.completed_actions
+
+
+def test_agent_autonomous_refine_deepens_staged_plan_after_stable_result(monkeypatch) -> None:
+    monkeypatch.setenv("BJT_AI_MODE", "local")
+    state = AIConversationState()
+    state.current_plan = build_test_plan(model="S8050", goal="beta", depth="conservative")
+    state.current_plan = type(state.current_plan)(
+        **{
+            **state.current_plan.to_dict(),
+            "safety_notes": state.current_plan.safety_notes
+            + ["分阶段策略：先低风险验证；若 beta、Ic 和工作区分布正常，再切换 deep 计划加密测试。"],
+        }
+    )
+    state.record_execution(
+        {
+            "mode": "simulation",
+            "measurements": [
+                {"beta": 90.0, "region": "active", "Ic": 0.001, "Vce": 2.8},
+                {"beta": 120.0, "region": "active", "Ic": 0.002, "Vce": 2.5},
+                {"beta": 150.0, "region": "active", "Ic": 0.003, "Vce": 2.2},
+            ],
+        }
+    )
+    original_points = len(state.current_plan.vbb_steps)
+    original_sample_count = state.current_plan.sample_count
+    agent = TestAgent(state)
+
+    result = agent.run_turn("结果正常，下一步你来定")
+
+    assert result.intent.action == "modify_plan"
+    assert result.agent_state == "plan_refined"
+    assert result.plan is not None
+    assert result.plan.depth == "deep"
+    assert len(result.plan.vbb_steps) > original_points
+    assert result.plan.sample_count > original_sample_count
+    assert "保守阶段结果稳定" in result.completed_actions[0]
+    assert agent.state.current_plan == result.plan
 
 
 def test_agent_autonomous_refine_uses_llm_for_explanation_when_cloud_enabled(monkeypatch) -> None:
@@ -578,6 +712,25 @@ def test_agent_diagnoses_logs_and_measurements(monkeypatch) -> None:
     assert result.intent.action == "explain_result"
     assert "过流保护" in result.response
     assert "多数点处于饱和区" in result.response
+
+
+def test_agent_diagnoses_standalone_fault_descriptions(monkeypatch) -> None:
+    monkeypatch.setenv("BJT_AI_MODE", "local")
+    agent = TestAgent()
+
+    short_result = agent.run_turn("B、C 之间直接短路，万用表蜂鸣")
+    open_result = agent.run_turn("B-E 之间不导通像断了")
+    power_result = agent.run_turn("功耗算下来 1.2W 超了")
+    polarity_result = agent.run_turn("BC557 当 NPN 测全是 0")
+    reversed_result = agent.run_turn("正接 beta 很低对调 C/E 反而正常")
+
+    assert short_result.intent.action == "explain_result"
+    assert "短路" in short_result.response
+    assert open_result.intent.action == "explain_result"
+    assert "开路" in open_result.response or "PN 结异常" in open_result.response
+    assert "功耗风险" in power_result.response
+    assert "极性方向错误" in polarity_result.response
+    assert "引脚顺序错误" in reversed_result.response
 
 
 def test_agent_merges_intent_and_summary_llm_usage(monkeypatch) -> None:

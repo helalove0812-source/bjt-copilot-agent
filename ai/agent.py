@@ -10,7 +10,8 @@ import secrets
 
 from core.types import HwConfig
 
-from ai.assistant import summarize_execution_with_ai, summarize_plan_with_ai
+from ai.action_taxonomy import action_items_from_labels
+from ai.assistant import build_execution_stats, summarize_execution_with_ai, summarize_plan_with_ai
 from ai.autonomy import refine_plan_after_execution
 from ai.conversation import (
     AIConversationState,
@@ -20,7 +21,7 @@ from ai.conversation import (
     apply_intent_to_plan,
     interpret_user_message,
 )
-from ai.rules import diagnose_context
+from ai.rules import diagnose_context, diagnose_tags
 from ai.safety import evaluate_execution_request
 from ai.test_planner import TestPlan
 from ai.tools import execute_plan
@@ -53,7 +54,10 @@ class AgentTurnResult:
     agent_state: str = "idle"
     required_inputs: list[str] = field(default_factory=list)
     next_actions: list[str] = field(default_factory=list)
+    next_action_items: list[dict] = field(default_factory=list)
+    diagnosis_tags: list[str] = field(default_factory=list)
     completed_actions: list[str] = field(default_factory=list)
+    completed_action_items: list[dict] = field(default_factory=list)
     agent_steps: list[dict] = field(default_factory=list)
 
     def to_dict(self) -> dict:
@@ -71,7 +75,10 @@ class AgentTurnResult:
             "agent_state": self.agent_state,
             "required_inputs": self.required_inputs,
             "next_actions": self.next_actions,
+            "next_action_items": self.next_action_items,
+            "diagnosis_tags": self.diagnosis_tags,
             "completed_actions": self.completed_actions,
+            "completed_action_items": self.completed_action_items,
             "agent_steps": self.agent_steps,
         }
 
@@ -105,6 +112,7 @@ class TestAgent:
         agent_state = "idle"
         required_inputs: list[str] = []
         next_actions: list[str] = []
+        diagnosis_tags_out: list[str] = []
         completed_actions: list[str] = []
         agent_steps: list[dict] = [_agent_step("done", "解析意图", intent.action)]
 
@@ -193,7 +201,11 @@ class TestAgent:
                         response = _append_profile_save_prompt(response, plan, self.state)
                         execution_summary = response
                 self.state.current_summary = execution_summary
-                next_actions = _execution_next_actions(execution)
+                diagnosis_tags_out = diagnose_tags(
+                    str(execution.get("abort_reason") or execution_summary or response),
+                    measurements=execution.get("measurements") or [],
+                )
+                next_actions = _execution_next_actions(execution, plan)
                 agent_steps.append(_agent_step("done", "执行仿真", agent_state))
 
         elif intent.action == "execute_hardware":
@@ -255,7 +267,11 @@ class TestAgent:
                         response = _append_profile_save_prompt(response, plan, self.state)
                         execution_summary = response
                     self.state.current_summary = execution_summary
-                    next_actions = _execution_next_actions(execution)
+                    diagnosis_tags_out = diagnose_tags(
+                        str(execution.get("abort_reason") or execution_summary or response),
+                        measurements=execution.get("measurements") or [],
+                    )
+                    next_actions = _execution_next_actions(execution, plan)
                     agent_steps.append(_agent_step("done", "执行硬件测试", agent_state))
 
         elif intent.action in {"save_profile", "update_profile"}:
@@ -279,24 +295,29 @@ class TestAgent:
                 agent_steps.append(_agent_step("ready", "切换器件库", response))
 
         elif intent.action == "explain_result":
+            current_measurements = (self.state.current_execution or {}).get("measurements") or []
             if _looks_like_diagnosis(text) or logs:
                 response = diagnose_context(
                     text,
                     logs=logs or [],
-                    measurements=(self.state.current_execution or {}).get("measurements") or [],
+                    measurements=current_measurements,
                 )
+                diagnosis_tags_out = diagnose_tags(text, logs=logs or [], measurements=current_measurements)
             else:
                 response = answer_from_context(intent, self.state)
+                diagnosis_tags_out = diagnose_tags(text, measurements=current_measurements)
             agent_state = "diagnosing"
             next_actions = _diagnosis_next_actions(self.state.current_plan)
             agent_steps.append(_agent_step("done", "分析上下文", "诊断/解释结果"))
 
         elif _looks_like_diagnosis(text):
+            current_measurements = (self.state.current_execution or {}).get("measurements") or []
             response = diagnose_context(
                 text,
                 logs=logs or [],
-                measurements=(self.state.current_execution or {}).get("measurements") or [],
+                measurements=current_measurements,
             )
+            diagnosis_tags_out = diagnose_tags(text, logs=logs or [], measurements=current_measurements)
             agent_state = "diagnosing"
             next_actions = _diagnosis_next_actions(self.state.current_plan)
             agent_steps.append(_agent_step("done", "分析上下文", "诊断/解释结果"))
@@ -335,7 +356,10 @@ class TestAgent:
             agent_state=agent_state,
             required_inputs=required_inputs,
             next_actions=next_actions,
+            next_action_items=_action_items_from_labels(next_actions),
+            diagnosis_tags=diagnosis_tags_out,
             completed_actions=completed_actions,
+            completed_action_items=_action_items_from_labels(completed_actions),
             agent_steps=agent_steps,
         )
 
@@ -360,7 +384,7 @@ class TestAgent:
 
 
 def _looks_like_diagnosis(text: str) -> bool:
-    return any(word in text for word in ("诊断", "异常", "接反", "开路", "短路", "为什么", "不对"))
+    return any(word in text for word in ("诊断", "异常", "接反", "开路", "短路", "不导通", "断了", "功耗", "全是 0", "全是0", "对调", "为什么", "不对"))
 
 
 def _looks_like_autonomous_refine(text: str) -> bool:
@@ -376,6 +400,10 @@ def _agent_step(status: str, label: str, detail: str = "") -> dict:
     return {"status": status, "label": label, "detail": detail}
 
 
+def _action_items_from_labels(labels: list[str]) -> list[dict]:
+    return action_items_from_labels(labels)
+
+
 def _missing_profile_inputs(fields: dict[str, float | str]) -> list[str]:
     labels = {
         "bjt_type": "管型",
@@ -388,6 +416,8 @@ def _missing_profile_inputs(fields: dict[str, float | str]) -> list[str]:
 
 def _plan_next_actions(plan: TestPlan) -> list[str]:
     actions = ["运行仿真", "解释或调整当前计划"]
+    if any("分阶段策略" in note for note in plan.safety_notes):
+        actions = ["先运行保守仿真", "结果正常后加深计划", "解释或调整当前计划"]
     if plan.bjt_type == "NPN":
         actions.append("请求硬件执行确认")
     else:
@@ -395,18 +425,38 @@ def _plan_next_actions(plan: TestPlan) -> list[str]:
     return actions
 
 
-def _execution_next_actions(execution: dict | None) -> list[str]:
+def _execution_next_actions(execution: dict | None, plan: TestPlan | None = None) -> list[str]:
     if not execution:
         return ["生成测试计划"]
     if execution.get("aborted"):
         return ["查看中止原因", "降低限值或检查接线后重试", "解释已保留的测量点"]
     if execution.get("skipped"):
         return ["查看跳过原因", "修改计划或切换为仿真模式"]
+    stats = build_execution_stats(execution)
+    region_counts = stats.get("region_counts") or {}
+    active = int(region_counts.get("active", 0))
+    saturation = int(region_counts.get("saturation", 0))
+    cutoff = int(region_counts.get("cutoff", 0))
+    point_count = int(stats.get("point_count") or 0)
+    if point_count == 0:
+        return ["检查为什么没有测量点", "重新运行保守仿真", "修改计划或切换模式"]
+    if saturation >= max(2, active):
+        return ["降低 Vbb 上沿后复测", "检查 Vce 工作窗口", "解释结果"]
+    if cutoff >= max(2, active):
+        return ["提高 Vbb 起点或检查基极支路", "重新运行保守仿真", "解释结果"]
+    if active >= 2:
+        actions = ["解释结果"]
+        if plan and plan.depth != "deep":
+            actions.insert(0, "结果稳定后加深计划")
+        actions.extend(["调整计划后重测", "导出或查看执行数据"])
+        return actions
     return ["解释结果", "调整计划后重测", "导出或查看执行数据"]
 
 
 def _diagnosis_next_actions(plan: TestPlan | None) -> list[str]:
     actions = ["根据诊断修改计划", "重新运行仿真验证"]
+    if plan and any("分阶段策略" in note for note in plan.safety_notes):
+        actions.insert(0, "结果正常后加深计划")
     if plan and plan.bjt_type == "NPN":
         actions.append("确认安全后再请求硬件执行")
     return actions

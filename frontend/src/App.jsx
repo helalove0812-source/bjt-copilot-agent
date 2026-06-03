@@ -435,13 +435,17 @@ function OutputChart({ measurements }) {
             }).join(" ");
             const lastPoint = group.points[group.points.length - 1];
             const lastDisplayIc = yAxis.convert(Math.abs(lastPoint.ic));
+            const lastX = xs(Math.max(0, Math.min(VCE_MAX, Math.abs(lastPoint.vce))));
+            const labelNearEdge = lastX > ml + plotW - 72;
+            const labelOffsetY = index % 2 === 0 ? -8 : 12;
             return (
               <g key={`curve-${group.label}-${index}`}>
                 <path className="curve" d={d} />
                 <text
                   className="clabel"
-                  x={xs(Math.max(0, Math.min(VCE_MAX, Math.abs(lastPoint.vce)))) + 6}
-                  y={ys(Math.max(0, Math.min(yAxis.max, lastDisplayIc))) - 6}
+                  x={lastX + (labelNearEdge ? -8 : 8)}
+                  y={ys(Math.max(0, Math.min(yAxis.max, lastDisplayIc))) + labelOffsetY}
+                  textAnchor={labelNearEdge ? "end" : "start"}
                 >
                   {group.label}
                 </text>
@@ -606,6 +610,7 @@ const PROFILE_UNSAVED_MESSAGE = "BJTagent：本次型号尚未保存到本地库
 const PROFILE_SAVED_MESSAGE = "BJTagent：已保存到本地型号库，后续可直接复用";
 const LIBRARY_PANEL_OPTIONS = ["BJTagent", "器件库"];
 const LIBRARY_COMMAND_HINTS = ["列出已保存型号", "查看 ", "删除 ", "启用 ", "禁用 ", "更新 ", "新增 "];
+const HARDWARE_WARNING_DETAIL = "存在误接线、器件损坏或过流风险。请确认器件、夹具、引脚、限流电阻、量程和供电状态已经检查。";
 
 function formatProfileFieldValue(key, value) {
   if (value === undefined || value === null || value === "") return null;
@@ -645,6 +650,18 @@ function AIPanel({
   logs,
   conversationState,
   setConversationState,
+  msgs,
+  setMsgs,
+  tab,
+  setTab,
+  provider,
+  setProvider,
+  model,
+  setModel,
+  apiKey,
+  setApiKey,
+  text,
+  setText,
   agentStatus,
   agentEvent,
   onPlanReady,
@@ -652,17 +669,12 @@ function AIPanel({
   setRightPanel,
   onOpenLibrary,
 }) {
-  const [tab, setTab] = useState(0);
-  const [provider, setProvider] = useState(1);
-  const [model, setModel] = useState("deepseek-v4-flash");
-  const [apiKey, setApiKey] = useState("");
-  const [text, setText] = useState("");
-  const [msgs, setMsgs] = useState([]);
   const [apiOnline, setApiOnline] = useState(false);
   const chatRef = useRef(null);
   const lastPendingModelRef = useRef("");
   const lastFieldSignatureRef = useRef("");
   const lastAgentEventIdRef = useRef(null);
+  const lastSystemMessageKeyRef = useRef("");
   const unsavedProfileNoticeRef = useRef(new Set());
   const savedProfileNoticeRef = useRef(new Set());
   const pendingProfileModel = conversationState?.pending_profile_model || "";
@@ -674,13 +686,18 @@ function AIPanel({
   const missingFields = profileFieldOrder
     .filter((key) => !formatProfileFieldValue(key, pendingProfileFields[key]))
     .map((key) => PROFILE_FIELD_LABELS[key] || key);
-  const addAgentMessage = (text) =>
-    setMsgs((m) => [...m, { role: "system", text }]);
+  const addAgentMessage = (message) =>
+    setMsgs((m) => [...m, { role: "system", text: message }]);
+  const pushUniqueSystemMessage = (message, dedupeKey = message) => {
+    if (lastSystemMessageKeyRef.current === dedupeKey) return;
+    lastSystemMessageKeyRef.current = dedupeKey;
+    addAgentMessage(message);
+  };
   useEffect(() => { if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight; }, [msgs]);
   useEffect(() => {
     if (!pendingProfileModel || lastPendingModelRef.current === pendingProfileModel) return;
     lastPendingModelRef.current = pendingProfileModel;
-    addAgentMessage("BJTagent：识别到未知型号，进入规格补全流程");
+    pushUniqueSystemMessage("BJTagent：识别到未知型号，进入规格补全流程", `pending-profile:${pendingProfileModel}`);
   }, [pendingProfileModel]);
   useEffect(() => {
     const signature = JSON.stringify(pendingProfileFields);
@@ -688,16 +705,16 @@ function AIPanel({
     lastFieldSignatureRef.current = signature;
     const fieldCount = Object.keys(pendingProfileFields).length;
     if (fieldCount > 0 && missingFields.length > 0) {
-      addAgentMessage("BJTagent：已记录规格字段，继续等待缺失信息");
+      pushUniqueSystemMessage("BJTagent：已记录规格字段，继续等待缺失信息", `pending-fields:${signature}:missing`);
     }
     if (fieldCount >= profileFieldOrder.length) {
-      addAgentMessage("BJTagent：规格已完整，可生成保守计划");
+      pushUniqueSystemMessage("BJTagent：规格已完整，可生成保守计划", `pending-fields:${signature}:complete`);
     }
   }, [pendingProfileModel, pendingProfileFields, missingFields.length]);
   useEffect(() => {
     if (!agentEvent?.id || agentEvent.id === lastAgentEventIdRef.current) return;
     lastAgentEventIdRef.current = agentEvent.id;
-    addAgentMessage(agentEvent.text);
+    pushUniqueSystemMessage(agentEvent.text, `agent-event:${agentEvent.text}`);
   }, [agentEvent]);
 
   const checkApi = async () => {
@@ -798,6 +815,7 @@ function AIPanel({
             <div className="agent-line">当前正在补全：{pendingProfileModel}</div>
             <div className="agent-line">已记录字段：{recordedFields.length > 0 ? recordedFields.join(" / ") : "暂无"}</div>
             <div className="agent-line">缺失字段：{missingFields.length > 0 ? missingFields.join(" / ") : "无"}</div>
+            <div className="agent-line">可直接回复：NPN，Vceo 40V，Ic 200mA，Ptot 500mW</div>
           </>
         ) : (
           <div className="agent-line">当前状态：{agentStatus}</div>
@@ -886,11 +904,11 @@ function DeviceLibraryPanel({
               <br />
               {`Vceo ${selectedProfile.vceo_max_v}V · Ic ${Number(selectedProfile.ic_max_a || 0) * 1000}mA · Ptot ${Number(selectedProfile.p_tot_w || 0) * 1000}mW`}
             </div>
-            <button className="send" onClick={() => onEditProfile(selectedProfile)}>更新</button>
+            <button className="send" onClick={() => onEditProfile(selectedProfile)}>更新器件</button>
             <button className="send" onClick={() => onToggleProfileEnabled(selectedProfile)}>
-              {selectedProfile.enabled ? "禁用" : "启用"}
+              {selectedProfile.enabled ? "禁用器件" : "启用器件"}
             </button>
-            <button className="send" onClick={() => onDeleteProfile(selectedProfile)}>删除</button>
+            <button className="send" onClick={() => onDeleteProfile(selectedProfile)}>删除器件</button>
           </>
         ) : (
           <div className="intro"><b>器件库</b>点击列表项查看详情，或用上方“新增器件”创建记录。</div>
@@ -921,6 +939,12 @@ export default function App() {
   const [config, setConfig] = useState(DEFAULT_TEST_CONFIG);
   const [currentPlan, setCurrentPlan] = useState(null);
   const [conversationState, setConversationState] = useState(null);
+  const [aiMessages, setAiMessages] = useState([]);
+  const [aiTab, setAiTab] = useState(0);
+  const [aiProvider, setAiProvider] = useState(1);
+  const [aiModel, setAiModel] = useState("deepseek-v4-flash");
+  const [aiApiKey, setAiApiKey] = useState("");
+  const [aiText, setAiText] = useState("");
   const [testPoints, setTestPoints] = useState([]);
   const [planLimits, setPlanLimits] = useState({ ic: DEFAULT_TEST_CONFIG.ic, power: DEFAULT_TEST_CONFIG.pw });
   const [busy, setBusy] = useState(false);
@@ -1087,6 +1111,9 @@ export default function App() {
   const openLibraryPanel = async (sourceText = "") => {
     setRightPanel("器件库");
     const model = profileModelFromCommand(sourceText);
+    if (!model) {
+      setSelectedProfile(null);
+    }
     await loadUserProfiles(model || librarySearch, libraryEnabledOnly);
     if (model) {
       await loadUserProfileDetail(model);
@@ -1224,7 +1251,7 @@ export default function App() {
       return;
     }
     if (config.runMode === "hardware") {
-      const ok = window.confirm("即将执行真实硬件输出。请确认器件、夹具、引脚、限流电阻和量程已经检查。继续吗？");
+      const ok = window.confirm(`即将执行真实硬件输出。${HARDWARE_WARNING_DETAIL}继续吗？`);
       if (!ok) {
         addLog("已取消硬件执行。");
         return;
@@ -1269,7 +1296,7 @@ export default function App() {
   };
   const confirmHardware = (label) => {
     if (config.runMode !== "hardware") return true;
-    return window.confirm(`即将执行真实硬件动作：${label}。请确认器件、夹具、引脚、限流电阻和量程已经检查。继续吗？`);
+    return window.confirm(`即将执行真实硬件动作：${label}。${HARDWARE_WARNING_DETAIL}继续吗？`);
   };
   const runAction = async (requestedAction) => {
     const selectedMap = {
@@ -1362,6 +1389,18 @@ export default function App() {
               currentPlan={currentPlan}
               conversationState={conversationState}
               setConversationState={setConversationState}
+              msgs={aiMessages}
+              setMsgs={setAiMessages}
+              tab={aiTab}
+              setTab={setAiTab}
+              provider={aiProvider}
+              setProvider={setAiProvider}
+              model={aiModel}
+              setModel={setAiModel}
+              apiKey={aiApiKey}
+              setApiKey={setAiApiKey}
+              text={aiText}
+              setText={setAiText}
               agentStatus={agentStatus}
               agentEvent={agentEvent}
               testPoints={testPoints}
@@ -1385,10 +1424,12 @@ export default function App() {
               enabledOnly={libraryEnabledOnly}
               onSearchChange={(value) => {
                 setLibrarySearch(value);
+                setSelectedProfile(null);
                 loadUserProfiles(value, libraryEnabledOnly);
               }}
               onEnabledOnlyChange={(value) => {
                 setLibraryEnabledOnly(value);
+                setSelectedProfile(null);
                 loadUserProfiles(librarySearch, value);
               }}
               onRefresh={() => loadUserProfiles()}
@@ -1454,10 +1495,10 @@ function Styles() {
 .theme-btn{width:30px;height:30px;border-radius:8px;border:none;cursor:pointer;background:transparent;color:var(--label-2);display:grid;place-items:center;transition:background .15s}
 .theme-btn:hover{background:var(--bg-fill)}
 
-.app{flex:1;display:grid;grid-template-columns:268px 1fr 320px;min-height:0}
-.sidebar{background:var(--bg-sidebar);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);border-right:.5px solid var(--separator);padding:var(--s5) var(--s4) var(--s6);overflow-y:auto}
-.content{background:var(--bg-content);overflow-y:auto;padding:var(--s7) var(--s7) var(--s8)}
-.inspector{background:var(--bg-sidebar);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);border-left:.5px solid var(--separator);display:flex;flex-direction:column;min-height:0}
+.app{flex:1;display:grid;grid-template-columns:268px minmax(0,1fr) 320px;min-height:0}
+.sidebar{grid-area:sidebar;background:var(--bg-sidebar);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);border-right:.5px solid var(--separator);padding:var(--s5) var(--s4) var(--s6);overflow-y:auto;min-width:0}
+.content{grid-area:content;background:var(--bg-content);overflow-y:auto;padding:var(--s7) var(--s7) var(--s8);min-width:0}
+.inspector{grid-area:inspector;background:var(--bg-sidebar);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);border-left:.5px solid var(--separator);display:flex;flex-direction:column;min-height:0;min-width:0}
 .bjt-app ::-webkit-scrollbar{width:9px;height:9px}
 .bjt-app ::-webkit-scrollbar-thumb{background:var(--bg-fill-strong);border-radius:99px;border:2px solid transparent;background-clip:padding-box}
 
@@ -1528,7 +1569,7 @@ svg .tick{fill:var(--label-3);font-size:11px;font-family:var(--font-mono)}
 svg .axt{fill:var(--label-2);font-size:12px;font-family:var(--font-sans)}
 svg .curve{fill:none;stroke:var(--blue);stroke-width:2;stroke-linecap:round;opacity:0;transition:opacity .5s}
 .chart-card.connected svg .curve{opacity:1}
-svg .clabel{fill:var(--label-3);font-size:10px;font-family:var(--font-mono);opacity:0;transition:opacity .5s}
+svg .clabel{fill:var(--label-3);font-size:10px;font-family:var(--font-mono);opacity:0;transition:opacity .5s;paint-order:stroke;stroke:var(--bg-card);stroke-width:3px;stroke-linejoin:round}
 .chart-card.connected svg .clabel{opacity:1}
 svg .sample-dot{fill:var(--blue);stroke:var(--bg-card);stroke-width:2}
 
@@ -1598,7 +1639,8 @@ svg .sample-dot{fill:var(--blue);stroke:var(--bg-card);stroke-width:2}
 .stagger>*:nth-child(1){animation-delay:.05s}.stagger>*:nth-child(2){animation-delay:.1s}.stagger>*:nth-child(3){animation-delay:.15s}
 @keyframes bjtFade{to{opacity:1}}
 
-@media (max-width:1080px){.app{grid-template-columns:240px 1fr}.inspector{display:none}.metrics{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:1080px){.app{grid-template-columns:220px minmax(0,1fr);grid-template-areas:"sidebar content" "sidebar inspector"}.inspector{border-left:none;border-top:.5px solid var(--separator);max-height:360px}.metrics{grid-template-columns:repeat(2,1fr)}.content{padding:var(--s6) var(--s5) var(--s7)}}
+@media (max-width:820px){.window{height:auto;min-height:calc(100vh - 56px)}.app{grid-template-columns:1fr;grid-template-areas:"sidebar" "content" "inspector"}.sidebar{border-right:none;border-bottom:.5px solid var(--separator)}.inspector{max-height:none}}
 `}</style>
   );
 }

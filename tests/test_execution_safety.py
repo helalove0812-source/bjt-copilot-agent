@@ -4,7 +4,7 @@ from ai.safety import ExecutionPolicyDecision
 from app.runtime import Runtime
 from app.services import run_full_suite, run_npn_static_bringup, run_scan_curves
 from ai.test_planner import build_test_plan
-from ai.tools import execute_plan
+from ai.tools import execute_plan, preflight_plan
 from api_server import _hardware_token_valid_from_payload
 from core.types import HwConfig
 
@@ -95,6 +95,40 @@ def test_api_hardware_confirmation_phrase_is_required() -> None:
     assert _hardware_token_valid_from_payload("hardware", {"hardware_confirmation": "确认硬件执行"}) is True
     assert _hardware_token_valid_from_payload("hardware", {"hardware_confirmation_token": "确认硬件执行"}) is True
     assert _hardware_token_valid_from_payload("hardware", {"hardware_confirmation": "yes"}) is False
+
+
+def test_preflight_plan_uses_policy_without_runtime(monkeypatch) -> None:
+    plan = build_test_plan(model="S8050", goal="beta", depth="standard", mode="hardware")
+
+    def fail_build_runtime(*args, **kwargs):
+        del args, kwargs
+        raise AssertionError("preflight must not create a runtime")
+
+    monkeypatch.setattr("ai.tools.build_runtime", fail_build_runtime)
+
+    blocked = preflight_plan(plan, mode="hardware", allow_hardware=False)
+    confirmation = preflight_plan(plan, mode="hardware", allow_hardware=True)
+    ready = preflight_plan(plan, mode="hardware", allow_hardware=True, token_valid=True)
+
+    assert blocked["status"] == "deny"
+    assert blocked["ok_to_execute"] is False
+    assert blocked["will_touch_hardware"] is False
+    assert blocked["policy_tags"] == ["blocked_hardware_execution"]
+    assert blocked["preflight_summary"]
+    assert [check["id"] for check in blocked["checks"]] == [
+        "dry_run",
+        "bjt_type",
+        "hardware_allowance",
+        "hardware_confirmation",
+    ]
+    assert blocked["checks"][0]["status"] == "pass"
+    assert blocked["checks"][2]["status"] == "fail"
+    assert confirmation["status"] == "require_confirm"
+    assert confirmation["requires_confirmation"] is True
+    assert confirmation["checks"][3]["status"] == "pending"
+    assert ready["status"] == "allow"
+    assert ready["ok_to_execute"] is True
+    assert ready["checks"][3]["status"] == "pass"
 
 
 def test_execute_plan_aborts_hardware_run_when_runtime_guard_triggers(monkeypatch) -> None:

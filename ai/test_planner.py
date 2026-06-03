@@ -68,7 +68,7 @@ def infer_goal(text: str) -> TestGoal:
 
 def infer_depth(text: str) -> TestDepth:
     lowered = text.lower()
-    if any(word in lowered for word in ("深入", "详细", "精细", "deep", "加密", "多测", "完整", "全套")):
+    if any(word in lowered for word in ("深入", "详细", "精细", "deep", "加深", "加密", "多测", "完整", "全套")):
         return "deep"
     if any(word in lowered for word in ("保守", "安全", "低压", "conservative", "轻一点", "稳一点", "别烧", "不要烧", "快速", "快一点", "少测")):
         return "conservative"

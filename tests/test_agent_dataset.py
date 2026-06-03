@@ -3,19 +3,23 @@ import subprocess
 
 from pathlib import Path
 
-from scripts.evaluate_agent_samples import evaluate_samples, load_samples, validate_schema
+from scripts.evaluate_agent_samples import DEFAULT_DATASET, evaluate_samples, load_samples, validate_schema
 from scripts.migrate_agent_samples_schema import migrate_file
 
 
-DATASET = Path("数据/transistor_agent_samples.jsonl")
+DATASET = Path("数据/transistor_agent_samples.v3.jsonl")
 REGRESSION_DATASET = Path("数据/agent_regression_cases.jsonl")
 
 
 def test_agent_dataset_schema_is_valid() -> None:
     samples = load_samples(DATASET)
 
-    assert len(samples) == 1000
+    assert len(samples) == 1008
     assert validate_schema(samples) == []
+
+
+def test_evaluator_default_dataset_points_to_v3() -> None:
+    assert DEFAULT_DATASET == Path("数据/transistor_agent_samples.v3.jsonl")
 
 
 def test_agent_regression_dataset_schema_is_valid() -> None:
@@ -215,6 +219,241 @@ def test_evaluator_scores_expected_safety_behaviors() -> None:
 
     assert report["safety"]["behavior_count"] == 4
     assert report["safety"]["behavior_accuracy"] == 1.0
+
+
+def test_evaluator_reports_soft_metrics_and_non_gating_fields() -> None:
+    samples = [
+        {
+            "category": "diagnosis",
+            "user_text": "为什么这个点像饱和了",
+            "context": {"current_plan": {"model": "S8050", "goal": "beta", "depth": "standard"}},
+            "expected_intent": "explain_result",
+            "expected_goal": "",
+            "expected_depth": "",
+            "expected_model": "S8050",
+            "expected_constraints": {},
+            "expected_explicit_constraints": {},
+            "expected_plan_constraints": {},
+            "expected_safety_behavior": [],
+            "expected_diagnosis": ["saturation_suspected"],
+            "expected_actions": ["explain_result", "suggest_next_step"],
+            "notes": "soft metrics should surface diagnosis and action coverage",
+        }
+    ]
+
+    report = evaluate_samples(samples)
+
+    assert "soft_metrics" in report
+    assert "model" in report["soft_metrics"]
+    assert "diagnosis" in report["soft_metrics"]
+    assert "actions" in report["soft_metrics"]
+    assert report["soft_metrics"]["model"]["checked"] == 1
+    assert "category_breakdown" in report
+    assert "diagnosis" in report["category_breakdown"]
+    assert "non_gating_fields" in report
+    assert "expected_model" in report["non_gating_fields"]
+    assert "expected_diagnosis" in report["non_gating_fields"]
+    assert "expected_actions" in report["non_gating_fields"]
+
+
+def test_evaluator_reports_actions_breakdown() -> None:
+    samples = [
+        {
+            "category": "diagnosis",
+            "user_text": "执行中止了，为什么",
+            "context": {
+                "current_plan": {"model": "S8050", "goal": "beta", "depth": "standard"},
+                "measurements": [{"beta": 45, "region": "active", "Ic": 0.009, "Vce": 1.2}],
+                "logs": ["ABORT over-current guard tripped"],
+            },
+            "expected_intent": "explain_result",
+            "expected_goal": "",
+            "expected_depth": "",
+            "expected_model": "S8050",
+            "expected_constraints": {},
+            "expected_explicit_constraints": {},
+            "expected_plan_constraints": {},
+            "expected_safety_behavior": [],
+            "expected_diagnosis": ["overcurrent"],
+            "expected_actions": ["explain_result", "clamp_current", "explain_limit"],
+            "notes": "missing explain_limit should show up in actions breakdown",
+        },
+        {
+            "category": "context",
+            "user_text": "禁用 XYZ123",
+            "context": {},
+            "expected_intent": "manage_profile_library",
+            "expected_goal": "",
+            "expected_depth": "",
+            "expected_model": "XYZ123",
+            "expected_constraints": {},
+            "expected_explicit_constraints": {},
+            "expected_plan_constraints": {},
+            "expected_safety_behavior": [],
+            "expected_diagnosis": [],
+            "expected_actions": ["manage_profile_library", "confirm_change"],
+            "notes": "missing confirm_change should be grouped by category",
+        },
+    ]
+
+    report = evaluate_samples(samples)
+    actions = report["soft_metrics"]["actions"]
+
+    assert "missing_expected_tags" in actions
+    assert "missing_by_category" in actions
+    assert actions["missing_expected_tags"][0]["tag"] in {"confirm_change", "explain_limit"}
+    assert actions["missing_by_category"]["diagnosis"][0]["tag"] == "explain_limit"
+    assert actions["missing_by_category"]["context"][0]["tag"] == "confirm_change"
+    assert {"expected", "actual", "user_text", "line"}.issubset(actions["mismatch_examples"][0])
+
+
+def test_evaluator_reports_diagnosis_breakdown() -> None:
+    samples = [
+        {
+            "category": "diagnosis",
+            "user_text": "为什么这个点像饱和了",
+            "context": {"current_plan": {"model": "S8050", "goal": "beta", "depth": "standard"}},
+            "expected_intent": "explain_result",
+            "expected_goal": "",
+            "expected_depth": "",
+            "expected_model": "S8050",
+            "expected_constraints": {},
+            "expected_explicit_constraints": {},
+            "expected_plan_constraints": {},
+            "expected_safety_behavior": [],
+            "expected_diagnosis": ["overcurrent"],
+            "expected_actions": ["suggest_next_step"],
+            "notes": "saturation wording should surface diagnosis confusion overcurrent -> mostly_saturation",
+        }
+    ]
+
+    report = evaluate_samples(samples)
+    diagnosis = report["soft_metrics"]["diagnosis"]
+
+    assert "missing_expected_tags" in diagnosis
+    assert diagnosis["missing_expected_tags"][0] == {"tag": "overcurrent", "count": 1}
+    assert "confusion_pairs" in diagnosis
+    assert diagnosis["confusion_pairs"][0] == {
+        "expected_tag": "overcurrent",
+        "actual_tag": "mostly_saturation",
+        "count": 1,
+    }
+
+
+def test_modify_current_limit_actions_include_clamp_current() -> None:
+    samples = [
+        {
+            "category": "modify",
+            "user_text": "Ic 不超过 5mA",
+            "context": {"current_plan": {"model": "S8050", "goal": "beta", "depth": "standard"}},
+            "expected_intent": "modify_plan",
+            "expected_goal": "",
+            "expected_depth": "",
+            "expected_model": "S8050",
+            "expected_constraints": {},
+            "expected_explicit_constraints": {"ic_limit_a": 0.005},
+            "expected_plan_constraints": {"ic_limit_a": {"match": "lte", "value": 0.005}},
+            "expected_safety_behavior": [],
+            "expected_diagnosis": [],
+            "expected_actions": ["modify_plan", "clamp_current"],
+            "notes": "modify current limit should add clamp_current soft action",
+        },
+        {
+            "category": "modify",
+            "user_text": "别超过 8mA",
+            "context": {"current_plan": {"model": "S8050", "goal": "beta", "depth": "standard"}},
+            "expected_intent": "modify_plan",
+            "expected_goal": "",
+            "expected_depth": "",
+            "expected_model": "S8050",
+            "expected_constraints": {},
+            "expected_explicit_constraints": {"ic_limit_a": 0.008},
+            "expected_plan_constraints": {"ic_limit_a": {"match": "lte", "value": 0.008}},
+            "expected_safety_behavior": [],
+            "expected_diagnosis": [],
+            "expected_actions": ["modify_plan", "clamp_current"],
+            "notes": "modify current limit with colloquial wording should add clamp_current",
+        },
+    ]
+
+    report = evaluate_samples(samples)
+
+    assert report["soft_metrics"]["actions"]["accuracy"] == 1.0
+
+
+def test_modify_density_actions_include_increase_points() -> None:
+    samples = [
+        {
+            "category": "modify",
+            "user_text": "多扫几个 Ib 档",
+            "context": {"current_plan": {"model": "S8050", "goal": "beta", "depth": "standard"}},
+            "expected_intent": "modify_plan",
+            "expected_goal": "",
+            "expected_depth": "",
+            "expected_model": "S8050",
+            "expected_constraints": {},
+            "expected_explicit_constraints": {},
+            "expected_plan_constraints": {},
+            "expected_safety_behavior": [],
+            "expected_diagnosis": [],
+            "expected_actions": ["modify_plan", "increase_points"],
+            "notes": "ib buckets should add increase_points soft action",
+        },
+        {
+            "category": "modify",
+            "user_text": "再深入一点，多测几组",
+            "context": {"current_plan": {"model": "S8050", "goal": "beta", "depth": "standard"}},
+            "expected_intent": "modify_plan",
+            "expected_goal": "",
+            "expected_depth": "",
+            "expected_model": "S8050",
+            "expected_constraints": {},
+            "expected_explicit_constraints": {},
+            "expected_plan_constraints": {},
+            "expected_safety_behavior": [],
+            "expected_diagnosis": [],
+            "expected_actions": ["modify_plan", "increase_points"],
+            "notes": "deeper and more points wording should add increase_points",
+        },
+    ]
+
+    report = evaluate_samples(samples)
+
+    assert report["soft_metrics"]["actions"]["accuracy"] == 1.0
+
+
+def test_evaluator_prefers_real_structured_action_outputs() -> None:
+    samples = [
+        {
+            "category": "plan",
+            "user_text": "测 S8050，重点看 beta",
+            "context": {},
+            "expected_intent": "create_plan",
+            "expected_goal": "beta",
+            "expected_depth": "standard",
+            "expected_model": "S8050",
+            "expected_constraints": {},
+            "expected_explicit_constraints": {},
+            "expected_plan_constraints": {},
+            "expected_safety_behavior": [],
+            "expected_diagnosis": [],
+            "expected_actions": ["create_plan", "run_simulation", "request_hardware_confirmation"],
+            "notes": "soft actions should come from real structured next_action_items",
+        }
+    ]
+
+    report = evaluate_samples(samples)
+
+    assert report["soft_metrics"]["actions"]["accuracy"] == 1.0
+
+
+def test_agent_regression_dataset_includes_new_visibility_cases() -> None:
+    samples = load_samples(REGRESSION_DATASET)
+    texts = {sample["user_text"] for sample in samples}
+
+    assert "先保守扫一下 S8050，如果 beta 正常再加深" in texts
+    assert "禁用 XYZ123" in texts
+    assert "为什么这个点像饱和了" in texts
 
 
 def test_agent_regression_runner_help_smoke() -> None:

@@ -33,6 +33,14 @@ def call_execute_plan_handler(payload: dict) -> tuple[int, dict]:
     return handler.sent_status, handler.sent_payload
 
 
+def call_preflight_plan_handler(payload: dict) -> tuple[int, dict]:
+    handler = FakeHandler(payload)
+    api_server.ApiHandler._handle_preflight_plan(handler)
+    assert handler.sent_status is not None
+    assert handler.sent_payload is not None
+    return handler.sent_status, handler.sent_payload
+
+
 def call_ai_chat_handler(payload: dict) -> tuple[int, dict]:
     handler = FakeHandler(payload)
     api_server.ApiHandler._handle_ai_chat(handler)
@@ -372,9 +380,30 @@ def test_ai_chat_autonomously_refines_plan_from_execution_context(monkeypatch) -
     assert result["plan"]["ic_limit_a"] < plan.ic_limit_a
     assert result["completed_actions"]
     assert "自动生成下一版安全计划" in result["response"]
+    assert {"modify_plan", "clamp_current", "clamp_power"}.issubset(
+        {item["action"] for item in result["completed_action_items"]}
+    )
     assert result["conversation_state"]["current_plan"]["ic_limit_a"] == result["plan"]["ic_limit_a"]
     assert result["conversation_state"]["agent_activity_history"][-1]["type"] == "plan_refined"
     assert result["conversation_state"]["agent_activity_history"][-1]["completed_actions"] == result["completed_actions"]
+
+
+def test_ai_chat_returns_structured_next_action_items(monkeypatch) -> None:
+    monkeypatch.setenv("BJT_AI_MODE", "local")
+
+    status, result = call_ai_chat_handler(
+        {
+            "text": "测 S8050，重点看 beta",
+            "mode": "simulation",
+            "context": {},
+            "ai_settings": {"provider": "local"},
+        }
+    )
+
+    assert status == 200
+    assert result["ok"] is True
+    assert any(item["action"] == "run_simulation" for item in result["next_action_items"])
+    assert any(item["action"] == "request_hardware_confirmation" for item in result["next_action_items"])
 
 
 def test_execute_plan_api_requires_hardware_confirmation_phrase(monkeypatch) -> None:
@@ -466,6 +495,70 @@ def test_execute_plan_api_allows_simulation_without_confirmation(monkeypatch) ->
     assert result["ok"] is True
     assert result["agent_state"] == "execution_complete"
     assert calls == [{"mode": "simulation", "allow_hardware": False, "token_valid": True}]
+
+
+def test_preflight_plan_api_requires_confirmation_without_execution(monkeypatch) -> None:
+    plan = build_test_plan(model="S8050", goal="beta", depth="standard", mode="hardware")
+
+    def fail_execute_plan(*args, **kwargs):
+        del args, kwargs
+        raise AssertionError("preflight endpoint must not execute the plan")
+
+    monkeypatch.setattr(api_server, "execute_plan", fail_execute_plan)
+
+    status, result = call_preflight_plan_handler(
+        {
+            "mode": "hardware",
+            "allow_hardware": True,
+            "plan": plan.to_dict(),
+        },
+    )
+
+    assert status == 200
+    assert result["ok"] is True
+    assert result["preflight"]["status"] == "require_confirm"
+    assert result["preflight"]["requires_confirmation"] is True
+    assert result["preflight"]["will_touch_hardware"] is False
+    assert result["preflight"]["preflight_summary"]
+    assert [check["id"] for check in result["preflight"]["checks"]] == [
+        "dry_run",
+        "bjt_type",
+        "hardware_allowance",
+        "hardware_confirmation",
+    ]
+    assert result["preflight"]["checks"][3]["status"] == "pending"
+    assert result["agent_state"] == "awaiting_hardware_confirmation"
+    assert result["required_inputs"] == ["确认硬件执行"]
+    assert result["agent_steps"][-1]["detail"] == result["preflight"]["preflight_summary"]
+
+
+def test_preflight_plan_api_reports_ready_after_confirmation_phrase(monkeypatch) -> None:
+    plan = build_test_plan(model="S8050", goal="beta", depth="standard", mode="hardware")
+
+    def fail_execute_plan(*args, **kwargs):
+        del args, kwargs
+        raise AssertionError("preflight endpoint must not execute the plan")
+
+    monkeypatch.setattr(api_server, "execute_plan", fail_execute_plan)
+
+    status, result = call_preflight_plan_handler(
+        {
+            "mode": "hardware",
+            "allow_hardware": True,
+            "hardware_confirmation": "确认硬件执行",
+            "plan": plan.to_dict(),
+        },
+    )
+
+    assert status == 200
+    assert result["ok"] is True
+    assert result["preflight"]["status"] == "allow"
+    assert result["preflight"]["ok_to_execute"] is True
+    assert result["preflight"]["will_touch_hardware"] is False
+    assert result["preflight"]["preflight_summary"].startswith("预检通过")
+    assert result["preflight"]["checks"][3]["status"] == "pass"
+    assert result["agent_state"] == "preflight_ready"
+    assert result["agent_steps"][-1]["label"] == "策略允许"
 
 
 def test_execute_plan_api_exposes_aborted_agent_view(monkeypatch) -> None:
