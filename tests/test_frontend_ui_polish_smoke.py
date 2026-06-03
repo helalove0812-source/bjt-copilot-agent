@@ -47,3 +47,13 @@ def test_desktop_layout_declares_three_panel_grid_areas() -> None:
     source = APP_FILE.read_text(encoding="utf-8")
 
     assert '.app{flex:1;display:grid;grid-template-columns:268px minmax(0,1fr) 320px;grid-template-areas:"sidebar content inspector";min-height:0}' in source
+
+
+def test_agent_intent_debug_toggle_is_available() -> None:
+    source = APP_FILE.read_text(encoding="utf-8")
+
+    assert "formatIntentDebug" in source
+    assert "showIntentDebug" in source
+    assert "debug_intent: showIntentDebug" in source
+    assert "显示理解过程" in source
+    assert "white-space:pre-wrap" in source

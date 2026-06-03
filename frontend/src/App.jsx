@@ -612,6 +612,32 @@ const LIBRARY_PANEL_OPTIONS = ["BJTagent", "器件库"];
 const LIBRARY_COMMAND_HINTS = ["列出已保存型号", "查看 ", "删除 ", "启用 ", "禁用 ", "更新 ", "新增 "];
 const HARDWARE_WARNING_DETAIL = "存在误接线、器件损坏或过流风险。请确认器件、夹具、引脚、限流电阻、量程和供电状态已经检查。";
 
+function formatIntentBrief(intent) {
+  if (!intent || !intent.action) return "无";
+  return [
+    intent.action,
+    intent.model,
+    intent.goal,
+    intent.depth,
+    intent.mode,
+    intent.ic_limit_a ? `Ic ${Math.round(intent.ic_limit_a * 1000)}mA` : "",
+    intent.power_limit_w ? `P ${Math.round(intent.power_limit_w * 1000)}mW` : "",
+    intent.vcc_max ? `Vcc ${intent.vcc_max}V` : "",
+    intent.vbb_points ? `${intent.vbb_points}点` : "",
+  ].filter(Boolean).join(" / ");
+}
+
+function formatIntentDebug(debug) {
+  if (!debug) return "";
+  const lines = [
+    `local：${formatIntentBrief(debug.local_intent)}`,
+    `LLM：${formatIntentBrief(debug.llm_intent)}`,
+    `final：${formatIntentBrief(debug.final_intent)}（${debug.final_source || "local"}）`,
+  ];
+  if (debug.fallback_reason) lines.push(`原因：${debug.fallback_reason}`);
+  return `Agent 理解过程\n${lines.join("\n")}`;
+}
+
 function formatProfileFieldValue(key, value) {
   if (value === undefined || value === null || value === "") return null;
   if (key === "vceo_max_v") return `Vceo ${value}V`;
@@ -670,6 +696,7 @@ function AIPanel({
   onOpenLibrary,
 }) {
   const [apiOnline, setApiOnline] = useState(false);
+  const [showIntentDebug, setShowIntentDebug] = useState(false);
   const chatRef = useRef(null);
   const lastPendingModelRef = useRef("");
   const lastFieldSignatureRef = useRef("");
@@ -763,6 +790,7 @@ function AIPanel({
             provider: provider === 1 ? "deepseek" : "local",
             model,
             api_key: apiKey,
+            debug_intent: showIntentDebug,
           },
         }),
       });
@@ -775,7 +803,12 @@ function AIPanel({
       const resolvedProfileModel = resolveProfileModel(data.conversation_state || null, currentPlan);
       setConversationState(data.conversation_state || null);
       if (data.plan) onPlanReady?.(data.plan);
-      setMsgs((m) => [...m, { role: "ai", text: data.response }]);
+      const debugMessage = showIntentDebug ? formatIntentDebug(data.intent_debug) : "";
+      setMsgs((m) => [
+        ...m,
+        { role: "ai", text: data.response },
+        ...(debugMessage ? [{ role: "system", text: debugMessage }] : []),
+      ]);
       if (resolvedProfileModel && looksLikeUnsavedProfileResponse(data.response)) {
         if (!unsavedProfileNoticeRef.current.has(resolvedProfileModel) && !savedProfileNoticeRef.current.has(resolvedProfileModel)) {
           unsavedProfileNoticeRef.current.add(resolvedProfileModel);
@@ -832,6 +865,10 @@ function AIPanel({
         <Segmented options={["本地", "DeepSeek"]} value={provider} onChange={setProvider} />
         <input className="mini" value={model} onChange={(e) => setModel(e.target.value)} />
         <input className="mini" type="password" placeholder="API Key,仅当前进程使用" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
+        <label className="agent-line" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <input type="checkbox" checked={showIntentDebug} onChange={(event) => setShowIntentDebug(event.target.checked)} />
+          显示理解过程
+        </label>
         <textarea placeholder="直接描述器件型号、测试目标、限制条件…" value={text} onChange={(e) => setText(e.target.value)} />
         <button className="send" onClick={send}>发送</button>
       </div>
@@ -1619,7 +1656,7 @@ svg .sample-dot{fill:var(--blue);stroke:var(--bg-card);stroke-width:2}
 .chat{flex:1;overflow-y:auto;padding:var(--s2) var(--s5);display:flex;flex-direction:column;gap:var(--s3)}
 .intro{color:var(--label-2);font-size:13px;line-height:1.6}
 .intro b{color:var(--label);font-weight:640;display:block;margin-bottom:6px;font-size:14px}
-.bubble{max-width:92%;padding:10px 13px;border-radius:16px;font-size:13px;line-height:1.55}
+.bubble{max-width:92%;padding:10px 13px;border-radius:16px;font-size:13px;line-height:1.55;white-space:pre-wrap}
 .bubble.ai{background:var(--bg-fill);color:var(--label);align-self:flex-start;border-bottom-left-radius:5px}
 .bubble.me{background:var(--blue);color:#fff;align-self:flex-end;border-bottom-right-radius:5px}
 .bubble.system{align-self:center;background:var(--bg-fill);color:var(--label-2);border:1px dashed var(--separator);max-width:96%}

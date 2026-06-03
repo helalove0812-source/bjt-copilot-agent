@@ -26,8 +26,10 @@ from ai.conversation import (
     AIConversationState,
     answer_from_context,
     apply_intent_to_plan,
-    interpret_user_message,
+    interpret_user_message_with_debug,
 )
+from ai.datasheet_lookup import lookup_datasheet_profile
+from ai.env_loader import load_dotenv
 from ai.rules import diagnose_context
 from ai.safety import evaluate_execution_request
 from ai.state_taxonomy import blocked_reason_item
@@ -387,6 +389,17 @@ def _chat_agent_view(intent_action: str, state: AIConversationState, plan: TestP
 
 def _looks_like_autonomous_refine(text: str) -> bool:
     return any(word in text for word in ("优化", "自动调整", "自己看着办", "下一步", "你来定", "帮我调整", "改进计划"))
+
+
+def _should_lookup_datasheet(payload: dict, provider: str, intent_action: str) -> bool:
+    if intent_action not in {"create_plan", "modify_plan"}:
+        return False
+    settings = payload.get("ai_settings") if isinstance(payload.get("ai_settings"), dict) else {}
+    if "datasheet_lookup" in settings:
+        return bool(settings.get("datasheet_lookup"))
+    if "datasheet_lookup" in payload:
+        return bool(payload.get("datasheet_lookup"))
+    return provider != "local"
 
 
 def _execution_agent_view(result: dict) -> dict:
@@ -948,13 +961,32 @@ class ApiHandler(BaseHTTPRequestHandler):
             context = payload.get("context") if isinstance(payload.get("context"), dict) else {}
             config = payload.get("config") if isinstance(payload.get("config"), dict) else {}
             state = _state_from_context(context)
-            intent, used_ai, provider, usage = interpret_user_message(text, state, default_mode=mode)
+            intent, used_ai, provider, usage, intent_debug = interpret_user_message_with_debug(text, state, default_mode=mode)
             plan = None
+            datasheet_lookup = None
             completed_actions: list[str] = []
             agent_state_override = ""
             if intent.action in {"create_plan", "modify_plan"}:
                 if state.pending_profile_model and not state.pending_profile_fields:
-                    response = answer_from_context(intent, state)
+                    profile_override = None
+                    if _should_lookup_datasheet(payload, provider, intent.action):
+                        datasheet_lookup = lookup_datasheet_profile(state.pending_profile_model)
+                        if datasheet_lookup.ok and datasheet_lookup.profile:
+                            profile_override = datasheet_lookup.profile
+                            used_ai = used_ai or datasheet_lookup.used_llm_api
+                            if datasheet_lookup.used_llm_api:
+                                provider = datasheet_lookup.llm_provider or provider
+                                usage = datasheet_lookup.llm_usage or usage
+                    if profile_override is not None:
+                        plan = apply_intent_to_plan(intent, state, cfg=_hw_config(config), profile_override=profile_override)
+                        state.current_plan = plan
+                        summary, summary_used_ai, summary_provider, summary_usage = summarize_plan_with_ai(plan, text)
+                        used_ai = used_ai or summary_used_ai
+                        provider = summary_provider if summary_used_ai else provider
+                        usage = summary_usage or usage
+                        response = summary
+                    else:
+                        response = answer_from_context(intent, state)
                 elif intent.action == "modify_plan" and _looks_like_autonomous_refine(text) and state.current_plan and state.current_execution:
                     work = refine_plan_after_execution(
                         state.current_plan,
@@ -979,7 +1011,17 @@ class ApiHandler(BaseHTTPRequestHandler):
                     provider = work.llm_provider if work.used_ai_api else provider
                     usage = work.llm_usage or usage
                 else:
-                    plan = apply_intent_to_plan(intent, state, cfg=_hw_config(config))
+                    profile_override = None
+                    model_for_lookup = intent.model or (state.current_plan.model if state.current_plan else "")
+                    if model_for_lookup and _should_lookup_datasheet(payload, provider, intent.action):
+                        datasheet_lookup = lookup_datasheet_profile(model_for_lookup)
+                        if datasheet_lookup.ok and datasheet_lookup.profile:
+                            profile_override = datasheet_lookup.profile
+                            used_ai = used_ai or datasheet_lookup.used_llm_api
+                            if datasheet_lookup.used_llm_api:
+                                provider = datasheet_lookup.llm_provider or provider
+                                usage = datasheet_lookup.llm_usage or usage
+                    plan = apply_intent_to_plan(intent, state, cfg=_hw_config(config), profile_override=profile_override)
                     state.current_plan = plan
                     summary, summary_used_ai, summary_provider, summary_usage = summarize_plan_with_ai(plan, text)
                     used_ai = used_ai or summary_used_ai
@@ -1019,6 +1061,8 @@ class ApiHandler(BaseHTTPRequestHandler):
                     "used_ai_api": used_ai,
                     "llm_provider": provider,
                     "llm_usage": usage,
+                    "intent_debug": intent_debug,
+                    "datasheet_lookup": datasheet_lookup.to_dict() if datasheet_lookup else None,
                     "plan": plan.to_dict() if plan else None,
                     "conversation_state": _context_from_state(state),
                     **agent_view,
@@ -1032,6 +1076,7 @@ class ApiHandler(BaseHTTPRequestHandler):
 
 
 def main() -> int:
+    load_dotenv()
     server = ThreadingHTTPServer(("127.0.0.1", 8765), ApiHandler)
     print("BJT API listening on http://127.0.0.1:8765")
     server.serve_forever()

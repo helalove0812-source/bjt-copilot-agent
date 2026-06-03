@@ -8,6 +8,7 @@ from ai.conversation import (
     apply_intent_to_plan,
     infer_intent_locally,
     interpret_user_message,
+    interpret_user_message_with_debug,
 )
 from core.types import HwConfig
 from ai.test_planner import build_test_plan
@@ -51,6 +52,25 @@ def test_contextual_intent_can_increase_current_limit_relatively() -> None:
     assert plan.ic_limit_a == original_limit * 1.5
 
 
+def test_contextual_intent_relaxes_safety_window_without_bypassing_guard() -> None:
+    state = AIConversationState()
+    state.current_plan = build_test_plan(model="S8050", goal="beta", depth="conservative")
+    original_ic_limit = state.current_plan.ic_limit_a
+    original_power_limit = state.current_plan.power_limit_w
+
+    intent = infer_intent_locally("安全限制不要那么死", state)
+    plan = apply_intent_to_plan(intent, state, cfg=HwConfig(Ic_max_A=0.03, Pmax_W=0.30, Vcc_max=5.0))
+
+    assert intent.action == "modify_plan"
+    assert intent.depth == "standard"
+    assert intent.ic_limit_a == original_ic_limit * 1.5
+    assert intent.power_limit_w == original_power_limit * 1.5
+    assert plan.ic_limit_a > original_ic_limit
+    assert plan.power_limit_w > original_power_limit
+    assert plan.ic_limit_a <= 0.03
+    assert plan.power_limit_w <= 0.30
+
+
 def test_contextual_intent_can_adjust_power_limit_relatively() -> None:
     state = AIConversationState()
     state.current_plan = build_test_plan(model="S8050", goal="beta", depth="standard")
@@ -82,6 +102,102 @@ def test_local_ai_mode_does_not_call_cloud(monkeypatch) -> None:
     assert intent.action == "modify_plan"
     assert used_ai is False
     assert provider == "local"
+
+
+def test_intent_debug_reports_local_final_intent(monkeypatch) -> None:
+    state = AIConversationState()
+    state.current_plan = build_test_plan(model="S8050", goal="beta", depth="standard")
+    monkeypatch.setenv("BJT_AI_MODE", "local")
+
+    intent, used_ai, provider, usage, debug = interpret_user_message_with_debug(
+        "把限制电流调小一点",
+        state,
+    )
+
+    assert intent.action == "modify_plan"
+    assert used_ai is False
+    assert provider == "local"
+    assert usage == {}
+    assert debug["local_intent"]["action"] == "modify_plan"
+    assert debug["final_intent"]["ic_limit_a"] == intent.ic_limit_a
+    assert debug["final_source"] == "local"
+
+
+def test_llm_intent_debug_reports_llm_final_intent(monkeypatch) -> None:
+    class FakeResult:
+        provider = "deepseek"
+        model = "intent-model"
+        usage = {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2}
+        text = '{"action":"create_plan","model":"S8050","goal":"screening","depth":"conservative","response":"理解为快速筛查。"}'
+
+    monkeypatch.setenv("BJT_AI_MODE", "cloud")
+    monkeypatch.setattr("ai.conversation.chat_text", lambda *args, **kwargs: FakeResult())
+
+    intent, used_ai, provider, usage, debug = interpret_user_message_with_debug(
+        "帮我过一遍这个 S8050",
+        AIConversationState(),
+    )
+
+    assert intent.action == "create_plan"
+    assert intent.goal == "screening"
+    assert intent.depth == "conservative"
+    assert used_ai is True
+    assert provider == "deepseek:intent-model"
+    assert usage["total_tokens"] == 2
+    assert debug["local_intent"]["action"] == "create_plan"
+    assert debug["llm_intent"]["goal"] == "screening"
+    assert debug["final_source"] == "llm"
+
+
+def test_llm_cannot_upgrade_to_hardware_without_local_agreement(monkeypatch) -> None:
+    class FakeResult:
+        provider = "deepseek"
+        model = "intent-model"
+        usage = {}
+        text = '{"action":"execute_hardware","mode":"hardware","response":"执行硬件。"}'
+
+    monkeypatch.setenv("BJT_AI_MODE", "cloud")
+    monkeypatch.setattr("ai.conversation.chat_text", lambda *args, **kwargs: FakeResult())
+
+    intent, _used_ai, _provider, _usage, debug = interpret_user_message_with_debug(
+        "测一下 S8050",
+        AIConversationState(),
+    )
+
+    assert intent.action == "create_plan"
+    assert debug["llm_intent"]["action"] == "execute_hardware"
+    assert debug["final_source"] == "local"
+    assert "hardware" in debug["fallback_reason"]
+
+
+def test_local_model_extraction_handles_chinese_prefix_without_space() -> None:
+    intent = infer_intent_locally("测试s8050", AIConversationState())
+
+    assert intent.action == "create_plan"
+    assert intent.model == "s8050"
+
+
+def test_cloud_shadow_local_parse_does_not_pollute_pending_profile(monkeypatch) -> None:
+    class FakeResult:
+        provider = "deepseek"
+        model = "intent-model"
+        usage = {}
+        text = '{"action":"create_plan","model":"S8050","goal":"beta","depth":"standard","mode":"simulation","response":"识别为 S8050 beta 测试。"}'
+
+    state = AIConversationState()
+    monkeypatch.setenv("BJT_AI_MODE", "cloud")
+    monkeypatch.setattr("ai.conversation.chat_text", lambda *args, **kwargs: FakeResult())
+
+    intent, used_ai, _provider, _usage, debug = interpret_user_message_with_debug(
+        "测试s8050",
+        state,
+    )
+
+    assert intent.model == "S8050"
+    assert intent.goal == "beta"
+    assert used_ai is True
+    assert state.pending_profile_model is None
+    assert debug["final_source"] == "llm"
 
 
 def test_contextual_intent_can_increase_vbb_points() -> None:

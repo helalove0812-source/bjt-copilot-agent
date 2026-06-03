@@ -5,7 +5,9 @@ import os
 from pathlib import Path
 
 import api_server
+from ai.datasheet_lookup import DatasheetLookupResult, DatasheetSearchResult
 from ai.test_planner import build_test_plan
+from ai.transistor_db import TransistorProfile
 
 
 class FakeHandler:
@@ -57,6 +59,30 @@ def call_run_action_handler(payload: dict) -> tuple[int, dict]:
     return handler.sent_status, handler.sent_payload
 
 
+def test_api_server_main_loads_dotenv_before_serving(monkeypatch) -> None:
+    calls = []
+
+    class FakeServer:
+        def __init__(self, address, handler):
+            self.address = address
+            self.handler = handler
+
+        def serve_forever(self):
+            calls.append(("serve", self.address))
+            raise KeyboardInterrupt
+
+    monkeypatch.setattr(api_server, "load_dotenv", lambda: calls.append(("dotenv", None)))
+    monkeypatch.setattr(api_server, "ThreadingHTTPServer", FakeServer)
+
+    try:
+        api_server.main()
+    except KeyboardInterrupt:
+        pass
+
+    assert calls[0] == ("dotenv", None)
+    assert calls[1] == ("serve", ("127.0.0.1", 8765))
+
+
 def test_ai_chat_returns_pending_profile_state_for_unknown_model(monkeypatch) -> None:
     monkeypatch.setenv("BJT_AI_MODE", "local")
 
@@ -78,6 +104,54 @@ def test_ai_chat_returns_pending_profile_state_for_unknown_model(monkeypatch) ->
     assert result["agent_steps"][-1]["status"] == "waiting"
     assert result["conversation_state"]["pending_profile_model"] == "XYZ123"
     assert result["conversation_state"]["pending_profile_fields"] == {}
+    assert result["intent_debug"]["final_intent"]["action"] == "create_plan"
+    assert result["intent_debug"]["final_source"] == "local"
+
+
+def test_ai_chat_can_build_unknown_model_plan_from_datasheet_lookup(monkeypatch) -> None:
+    monkeypatch.setenv("BJT_AI_MODE", "local")
+    profile = TransistorProfile(
+        model="C1815",
+        bjt_type="NPN",
+        description="联网 datasheet 搜索提取的 NPN 小信号三极管",
+        vceo_max_v=50.0,
+        ic_max_a=0.15,
+        p_tot_w=0.4,
+        hfe_typical=(70, 700),
+        package="TO-92",
+        pinout_hint="联网资料提示：不同厂商可能存在 ECB/EBC 差异。",
+        confidence="datasheet_lookup",
+    )
+
+    def fake_lookup(model: str):
+        return DatasheetLookupResult(
+            ok=True,
+            model=model,
+            query=f"{model} transistor datasheet",
+            profile=profile,
+            sources=[DatasheetSearchResult(title="C1815 datasheet", url="https://example.test/c1815.pdf")],
+            confidence="high",
+        )
+
+    monkeypatch.setattr(api_server, "lookup_datasheet_profile", fake_lookup)
+
+    status, result = call_ai_chat_handler(
+        {
+            "text": "测试 C1815",
+            "mode": "hardware",
+            "context": {},
+            "ai_settings": {"provider": "local", "datasheet_lookup": True},
+        }
+    )
+
+    assert status == 200
+    assert result["ok"] is True
+    assert result["intent"] == "create_plan"
+    assert result["plan"]["model"] == "C1815"
+    assert result["plan"]["profile"]["confidence"] == "datasheet_lookup"
+    assert result["conversation_state"]["pending_profile_model"] is None
+    assert result["datasheet_lookup"]["ok"] is True
+    assert result["datasheet_lookup"]["sources"][0]["url"] == "https://example.test/c1815.pdf"
 
 
 def test_ai_chat_preserves_pending_profile_fields_across_turns(monkeypatch) -> None:

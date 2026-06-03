@@ -15,6 +15,9 @@ htmlcov/
 *.pyo
 *.pyd
 *.so
+.env
+.env.*
+!.env.example
 
 # Logs and runtime output
 *.log

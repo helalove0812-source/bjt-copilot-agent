@@ -25,14 +25,14 @@ from ai.conversation import (
     CandidateProfileState,
     answer_from_context,
     apply_intent_to_plan,
-    interpret_user_message,
+    interpret_user_message_with_debug,
 )
 from ai.rules import diagnose_context, diagnose_tags
 from ai.safety import evaluate_execution_request
 from ai.state_taxonomy import blocked_reason_item, canonical_agent_state, pick_blocked_reason, pick_execution_state
-from ai.test_planner import TestPlan
+from ai.test_planner import TestPlan, extract_model_guess
 from ai.tools import execute_plan
-from ai.transistor_db import TransistorProfile
+from ai.transistor_db import TransistorProfile, lookup_transistor
 from ai.user_profile_store import (
     DuplicateUserProfileError,
     InvalidUserProfileStoreError,
@@ -70,6 +70,7 @@ class AgentTurnResult:
     completed_action_items: list[dict] = field(default_factory=list)
     safety_action_items: list[dict] = field(default_factory=list)
     agent_steps: list[dict] = field(default_factory=list)
+    intent_debug: dict = field(default_factory=dict)
 
     def to_dict(self) -> dict:
         return {
@@ -95,6 +96,7 @@ class AgentTurnResult:
             "completed_action_items": self.completed_action_items,
             "safety_action_items": self.safety_action_items,
             "agent_steps": self.agent_steps,
+            "intent_debug": self.intent_debug,
         }
 
 
@@ -118,7 +120,7 @@ class TestAgent:
         output_dir: Path | None = None,
         logs: list[str] | None = None,
     ) -> AgentTurnResult:
-        intent, used_ai, provider, usage = interpret_user_message(text, self.state, default_mode=default_mode)
+        intent, used_ai, provider, usage, intent_debug = interpret_user_message_with_debug(text, self.state, default_mode=default_mode)
         plan: TestPlan | None = None
         execution: dict | None = None
         execution_summary = ""
@@ -134,7 +136,20 @@ class TestAgent:
         safety_policy_reasons: list[str] = []
         agent_steps: list[dict] = [_agent_step("done", "解析意图", intent.action)]
 
-        if intent.action in {"create_plan", "modify_plan"}:
+        if _looks_like_fake_result_request(text):
+            response = (
+                "我不能在仪器未连接或没有真实数据时编造测量值。可以改为运行仿真、导入已有数据，"
+                "或先完成连接/自检后再执行真实测量。"
+            )
+            agent_state = "aborted"
+            next_actions = ["改用仿真模式", "连接仪器并完成自检", "导入已有测量数据"]
+            next_action_items = [
+                action_item("decline_fake_result", reason="用户请求在缺少真实测量的情况下直接给出测量值。"),
+                action_item("suggest_simulation", reason="可用仿真或离线数据替代真实硬件结果。"),
+            ]
+            agent_steps.append(_agent_step("blocked", "拒绝编造测量值", "缺少真实硬件或测量数据"))
+
+        elif intent.action in {"create_plan", "modify_plan"}:
             missing_profile_inputs = _missing_profile_inputs(self.state.pending_profile_fields)
             if self.state.pending_profile_model and missing_profile_inputs:
                 response = answer_from_context(intent, self.state)
@@ -392,6 +407,7 @@ class TestAgent:
         )
         next_action_items = _merge_action_items(
             next_action_items or _action_items_from_labels(next_actions),
+            _request_context_action_items(text, intent, plan),
             _plan_context_action_items(intent, plan),
             recommend_actions(diagnosis_tags=diagnosis_tags_out),
         )
@@ -421,6 +437,7 @@ class TestAgent:
             completed_action_items=_action_items_from_labels(completed_actions),
             safety_action_items=safety_action_items,
             agent_steps=agent_steps,
+            intent_debug=intent_debug,
         )
 
     def _issue_hardware_confirmation(self, plan: TestPlan) -> str:
@@ -445,6 +462,26 @@ class TestAgent:
 
 def _looks_like_diagnosis(text: str) -> bool:
     return any(word in text for word in ("诊断", "异常", "接反", "开路", "短路", "不导通", "断了", "功耗", "全是 0", "全是0", "对调", "为什么", "不对"))
+
+
+def _looks_like_wiring_check_request(text: str) -> bool:
+    check_words = ("检查", "验证", "确认", "核对", "看看", "看一下")
+    wiring_words = ("接线", "引脚", "脚位", "pinout", "夹具", "接对", "方向")
+    return any(word in text for word in check_words) and any(word in text for word in wiring_words)
+
+
+def _looks_like_fake_result_request(text: str) -> bool:
+    fake_result_words = ("直接给我测量值", "编一个测量值", "编个测量值", "假装测完", "伪造结果", "随便给个结果")
+    unavailable_words = ("仪器没连上", "没连仪器", "没有仪器", "连不上", "没接硬件", "不接硬件")
+    return any(word in text for word in fake_result_words) or (
+        any(word in text for word in unavailable_words) and any(word in text for word in ("测量值", "结果", "数据"))
+    )
+
+
+def _looks_like_direct_execution_request(text: str, intent: AIIntent) -> bool:
+    if intent.action == "execute_hardware":
+        return True
+    return any(word in text for word in ("直接上电", "上电跑", "自动跑", "不用管我", "别废话直接"))
 
 
 def _looks_like_autonomous_refine(text: str) -> bool:
@@ -499,8 +536,25 @@ def _plan_context_action_items(intent: AIIntent, plan: TestPlan | None) -> list[
     items: list[dict] = []
     if intent.action == "modify_plan":
         items.append(action_item("update_plan", reason="已基于当前上下文更新测试计划。"))
+    if intent.vbb_points is not None:
+        items.append(action_item("increase_points", reason="用户要求增加或指定测试点密度。"))
     if plan.depth == "conservative":
         items.append(action_item("apply_conservative_defaults", reason="计划采用保守限流、限压或低风险默认参数。"))
+    return items
+
+
+def _request_context_action_items(text: str, intent: AIIntent, plan: TestPlan | None) -> list[dict]:
+    del plan
+    items: list[dict] = []
+    if _looks_like_wiring_check_request(text):
+        items.append(action_item("run_wiring_check", reason="用户要求先确认接线、引脚或夹具方向。"))
+        items.append(action_item("prompt_pinout_confirm", reason="真实测试前需要核对 datasheet 与 E/B/C 引脚定义。"))
+    if _looks_like_direct_execution_request(text, intent):
+        items.append(action_item("require_confirmation", reason="用户请求自动或直接执行，真实硬件前必须显式确认。"))
+        items.append(action_item("show_plan_summary", reason="执行前应先展示计划、限值、测试点和风险摘要。"))
+        model = intent.model or extract_model_guess(text)
+        if model != "UNKNOWN" and lookup_transistor(model).bjt_type == "PNP":
+            items.append(action_item("verify_polarity", reason="PNP 型号需要额外确认极性、偏置方向和夹具接线。"))
     return items
 
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field, replace
+import copy
 import json
 import os
 import re
@@ -12,7 +13,7 @@ from ai.assistant import local_execution_summary, build_execution_stats
 from ai.llm_client import LLMUnavailable, chat_text
 from ai.rules import extract_profile_fields, infer_rule_decision
 from ai.test_planner import TestDepth, TestGoal, TestPlan, build_test_plan, extract_model_guess, infer_depth, infer_goal
-from ai.transistor_db import build_profile_from_fields, lookup_transistor
+from ai.transistor_db import TransistorProfile, build_profile_from_fields, lookup_transistor
 
 
 IntentAction = Literal[
@@ -141,8 +142,33 @@ def interpret_user_message(
     *,
     default_mode: str = "simulation",
 ) -> tuple[AIIntent, bool, str, dict]:
-    if os.getenv("BJT_AI_MODE", "local") == "local":
-        return infer_intent_locally(text, state, default_mode=default_mode), False, "local", {}
+    intent, used_ai, provider, usage, _debug = interpret_user_message_with_debug(
+        text,
+        state,
+        default_mode=default_mode,
+    )
+    return intent, used_ai, provider, usage
+
+
+def interpret_user_message_with_debug(
+    text: str,
+    state: AIConversationState,
+    *,
+    default_mode: str = "simulation",
+) -> tuple[AIIntent, bool, str, dict, dict]:
+    ai_mode = os.getenv("BJT_AI_MODE", "local")
+    local_state = state if ai_mode == "local" else copy.deepcopy(state)
+    local_intent = infer_intent_locally(text, local_state, default_mode=default_mode)
+    debug: dict[str, Any] = {
+        "mode": ai_mode,
+        "local_intent": _intent_to_mapping(local_intent),
+        "llm_intent": None,
+        "final_intent": _intent_to_mapping(local_intent),
+        "final_source": "local",
+        "fallback_reason": "",
+    }
+    if ai_mode == "local":
+        return local_intent, False, "local", {}, debug
 
     prompt = json.dumps(
         {
@@ -180,20 +206,72 @@ def interpret_user_message(
     instructions = """你是 BJT 测试系统的上下文意图解析器。
 你必须根据用户消息和历史上下文判断下一步动作，并只输出 JSON 对象，不要输出 Markdown。
 如果用户在说“保守一点、Ic 不超过 10mA、Vcc 最高 3V、多测几个点、解释刚才结果、重新执行”等，要引用当前计划或当前执行结果。
+如果用户说“安全限制不要那么死、放宽一点、别太保守、限制松一点”，应理解为在本地 SafetyGuard 和硬件上限内适度放宽计划，通常 action=modify_plan、depth=standard，并给出更高但仍保守的 ic_limit_a/power_limit_w。
 不要发明硬件能力，不要要求超过安全限制。"""
     try:
         result = chat_text(system_text=instructions, user_text=prompt)
         data = _parse_json_object(result.text)
-        return _intent_from_mapping(data, text, state, default_mode), True, "{0}:{1}".format(result.provider, result.model), result.usage
-    except (LLMUnavailable, ValueError, TypeError):
-        return infer_intent_locally(text, state, default_mode=default_mode), False, "local", {}
+        llm_intent = _intent_from_mapping(data, text, state, default_mode)
+        final_intent, final_source, fallback_reason = _choose_final_intent(local_intent, llm_intent)
+        debug.update(
+            {
+                "llm_intent": _intent_to_mapping(llm_intent),
+                "final_intent": _intent_to_mapping(final_intent),
+                "final_source": final_source,
+                "fallback_reason": fallback_reason,
+            }
+        )
+        return final_intent, True, "{0}:{1}".format(result.provider, result.model), result.usage, debug
+    except (LLMUnavailable, ValueError, TypeError) as exc:
+        debug["fallback_reason"] = str(exc) or exc.__class__.__name__
+        fallback_intent = infer_intent_locally(text, state, default_mode=default_mode)
+        debug["local_intent"] = _intent_to_mapping(fallback_intent)
+        debug["final_intent"] = _intent_to_mapping(fallback_intent)
+        return fallback_intent, False, "local", {}, debug
 
 
-def apply_intent_to_plan(intent: AIIntent, state: AIConversationState, *, cfg: HwConfig | None = None) -> TestPlan:
+def _choose_final_intent(local_intent: AIIntent, llm_intent: AIIntent) -> tuple[AIIntent, str, str]:
+    if local_intent.action in {"execute_hardware", "save_profile", "update_profile", "manage_profile_library"}:
+        return local_intent, "local", "local action is safety/stateful"
+    if llm_intent.action == "execute_hardware" and local_intent.action != "execute_hardware":
+        return local_intent, "local", "llm attempted hardware execution without local agreement"
+    if local_intent.action == "explain_result" and llm_intent.action in {"create_plan", "modify_plan"}:
+        return local_intent, "local", "local matched diagnostic/safety wording"
+    return llm_intent, "llm", ""
+
+
+def _intent_to_mapping(intent: AIIntent) -> dict[str, Any]:
+    return {
+        "action": intent.action,
+        "model": intent.model,
+        "goal": intent.goal,
+        "depth": intent.depth,
+        "mode": intent.mode,
+        "ic_limit_a": intent.ic_limit_a,
+        "power_limit_w": intent.power_limit_w,
+        "vcc_max": intent.vcc_max,
+        "vbb_points": intent.vbb_points,
+        "library_patch": intent.library_patch,
+        "response": intent.response,
+    }
+
+
+def apply_intent_to_plan(
+    intent: AIIntent,
+    state: AIConversationState,
+    *,
+    cfg: HwConfig | None = None,
+    profile_override: TransistorProfile | None = None,
+) -> TestPlan:
     state.sync_candidate_profile()
     base = state.current_plan
-    pending_profile_override = None
-    if base is None and state.pending_profile_model and _pending_profile_is_complete(state.pending_profile_fields):
+    pending_profile_override = profile_override
+    if (
+        pending_profile_override is None
+        and base is None
+        and state.pending_profile_model
+        and _pending_profile_is_complete(state.pending_profile_fields)
+    ):
         pending_profile_override = build_profile_from_fields(state.pending_profile_model, state.pending_profile_fields)
 
     model = (
@@ -339,7 +417,7 @@ def infer_intent_locally(text: str, state: AIConversationState, *, default_mode:
     guessed_model = _extract_context_model_guess(text)
     has_model = guessed_model != "UNKNOWN"
     has_current = state.current_plan is not None
-    is_plan_edit = any(word in text for word in ("保守", "安全", "低压", "加深", "深入", "加密", "多测", "少一点", "降低", "提高", "不超过", "别超过", "上限", "限制", "改", "调整", "别动", "翻倍", "增加"))
+    is_plan_edit = any(word in text for word in ("保守", "安全", "低压", "加深", "深入", "加密", "多测", "少一点", "降低", "提高", "不超过", "别超过", "上限", "限制", "改", "调整", "别动", "翻倍", "增加", "放宽", "别太死", "不要那么死", "松一点"))
     action: IntentAction = "modify_plan" if has_current and (not has_model or is_plan_edit) else "create_plan"
     
     if action == "create_plan" and "测" not in text and "画" not in text and "筛选" not in text and "过一下" not in text:
@@ -359,6 +437,7 @@ def infer_intent_locally(text: str, state: AIConversationState, *, default_mode:
     power_limit = rule.power_limit_w
     vcc_max = rule.vcc_max
     vbb_points = rule.vbb_points
+    relax_safety_window = has_current and _looks_like_safety_window_relax_request(text)
     if has_current:
         relative_limits = _relative_limit_overrides(text, state.current_plan)
         if ic_limit is None:
@@ -366,12 +445,19 @@ def infer_intent_locally(text: str, state: AIConversationState, *, default_mode:
         if power_limit is None:
             power_limit = relative_limits.get("power_limit_w")
     depth = rule.depth or infer_depth(text)
+    if relax_safety_window:
+        if depth == "conservative":
+            depth = "standard"
+        if ic_limit is None:
+            ic_limit = min(float(state.current_plan.ic_limit_a) * 1.5, HwConfig().Ic_max_A)
+        if power_limit is None:
+            power_limit = min(float(state.current_plan.power_limit_w) * 1.5, HwConfig().Pmax_W)
     goal = rule.goal or infer_goal(text)
     profile = lookup_transistor(guessed_model) if has_model else None
     
     if goal == "auto" and has_current:
         goal = state.current_plan.goal
-    if depth == "standard" and has_current:
+    if depth == "standard" and has_current and not relax_safety_window:
         depth = state.current_plan.depth
     if not has_current and action == "create_plan" and state.pending_profile_model and depth == "standard":
         depth = "conservative"
@@ -385,6 +471,10 @@ def infer_intent_locally(text: str, state: AIConversationState, *, default_mode:
     if _looks_like_explicit_low_risk_screening(text) and goal == "auto":
         goal = "screening"
 
+    response = rule.response or "已根据上下文理解你的测试需求。"
+    if relax_safety_window:
+        response = "已理解为在本地 SafetyGuard 和硬件上限内适度放宽当前计划。"
+
     intent = AIIntent(
         action=action,
         model=guessed_model if has_model else None,
@@ -395,7 +485,7 @@ def infer_intent_locally(text: str, state: AIConversationState, *, default_mode:
         power_limit_w=power_limit,
         vcc_max=vcc_max,
         vbb_points=vbb_points,
-        response=rule.response or "已根据上下文理解你的测试需求。",
+        response=response,
     )
     if action in {"create_plan", "modify_plan"} and _looks_like_staged_deepen_request(text):
         return _with_staged_deepen_response(intent)
@@ -575,6 +665,25 @@ def _looks_like_limit_increase(text: str) -> bool:
             "两倍",
         )
     )
+
+
+def _looks_like_safety_window_relax_request(text: str) -> bool:
+    relax_words = (
+        "安全限制不要那么死",
+        "限制不要那么死",
+        "不要那么死",
+        "别太死",
+        "别那么死",
+        "别太保守",
+        "不要太保守",
+        "放宽一点",
+        "放宽点",
+        "限制松一点",
+        "松一点",
+        "大胆一点",
+    )
+    safety_scope_words = ("安全", "限制", "上限", "电流", "功耗", "电压", "窗口")
+    return any(word in text for word in relax_words) and any(word in text for word in safety_scope_words)
 
 
 def _relative_limit_factor(text: str, *, default: float) -> float:
@@ -784,11 +893,12 @@ def _extract_context_model_guess(text: str) -> str:
 
 def _model_candidates(text: str) -> list[str]:
     candidates: list[str] = []
+    candidates.extend(re.findall(r"[A-Za-z]{1,6}[-_]?\d[A-Za-z0-9_-]*|\d+[A-Za-z][A-Za-z0-9_-]*", text))
     for raw in text.replace(",", " ").replace("，", " ").split():
-        token = "".join(ch for ch in raw if ch.isalnum() or ch in "-_")
+        token = "".join(ch for ch in raw if ch.isascii() and (ch.isalnum() or ch in "-_"))
         if any(ch.isdigit() for ch in token) and any(ch.isalpha() for ch in token):
             candidates.append(token)
-    return candidates
+    return list(dict.fromkeys(candidates))
 
 
 def _extract_library_update_patch(text: str) -> dict[str, object]:

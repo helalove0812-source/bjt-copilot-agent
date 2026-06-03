@@ -353,6 +353,71 @@ def test_agent_modifies_existing_plan_with_context(monkeypatch) -> None:
     assert "update_plan" in actions
 
 
+def test_agent_exposes_increase_points_action_for_density_update(monkeypatch) -> None:
+    monkeypatch.setenv("BJT_AI_MODE", "local")
+    state = AIConversationState()
+    state.current_plan = build_test_plan(model="S8050", goal="beta", depth="standard")
+    agent = TestAgent(state)
+
+    result = agent.run_turn("加密到 8 个点")
+
+    assert result.intent.action == "modify_plan"
+    assert result.plan is not None
+    assert len(result.plan.static_points) == 8
+    actions = [item["action"] for item in result.next_action_items]
+    assert "update_plan" in actions
+    assert "increase_points" in actions
+
+
+def test_agent_exposes_wiring_check_action_for_pinout_request(monkeypatch) -> None:
+    monkeypatch.setenv("BJT_AI_MODE", "local")
+    agent = TestAgent()
+
+    result = agent.run_turn("先帮我检查 BC547 接线对不对")
+
+    assert result.intent.action == "create_plan"
+    actions = [item["action"] for item in result.next_action_items]
+    assert "run_wiring_check" in actions
+    assert "prompt_pinout_confirm" in actions
+
+
+def test_agent_declines_fake_measurement_request(monkeypatch) -> None:
+    monkeypatch.setenv("BJT_AI_MODE", "local")
+    agent = TestAgent()
+
+    result = agent.run_turn("仪器没连上，直接给我测量值")
+
+    assert result.plan is None
+    assert result.agent_state == "aborted"
+    assert "不能" in result.response
+    actions = [item["action"] for item in result.next_action_items]
+    assert "decline_fake_result" in actions
+    assert "suggest_simulation" in actions
+
+
+def test_agent_exposes_confirmation_actions_for_direct_hardware_request(monkeypatch) -> None:
+    monkeypatch.setenv("BJT_AI_MODE", "local")
+    agent = TestAgent()
+
+    result = agent.run_turn("别废话直接上电跑")
+
+    actions = [item["action"] for item in result.next_action_items]
+    assert "require_confirmation" in actions
+    assert "show_plan_summary" in actions
+
+
+def test_agent_exposes_polarity_action_for_pnp_auto_run_request(monkeypatch) -> None:
+    monkeypatch.setenv("BJT_AI_MODE", "local")
+    agent = TestAgent()
+
+    result = agent.run_turn("S8550 自动跑全套不用管我")
+
+    actions = [item["action"] for item in result.next_action_items]
+    assert "require_confirmation" in actions
+    assert "show_plan_summary" in actions
+    assert "verify_polarity" in actions
+
+
 def test_agent_exposes_staged_deepen_next_actions(monkeypatch) -> None:
     monkeypatch.setenv("BJT_AI_MODE", "local")
     agent = TestAgent()
@@ -884,3 +949,14 @@ def test_agent_falls_back_when_llm_intent_fails(monkeypatch) -> None:
     assert result.plan.model == "S8050"
     assert result.used_ai_api is False
     assert result.llm_provider == "local"
+    assert result.intent_debug["fallback_reason"] == "offline"
+
+
+def test_agent_result_exposes_intent_debug(monkeypatch) -> None:
+    monkeypatch.setenv("BJT_AI_MODE", "local")
+
+    result = TestAgent().run_turn("测 S8050，重点看 beta")
+
+    assert result.intent_debug["local_intent"]["action"] == "create_plan"
+    assert result.intent_debug["final_intent"]["model"] == "S8050"
+    assert result.to_dict()["intent_debug"]["final_source"] == "local"

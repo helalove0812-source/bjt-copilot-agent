@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field, replace
+import re
 from typing import Literal
 
 from core.types import HwConfig
@@ -77,10 +78,12 @@ def infer_depth(text: str) -> TestDepth:
 
 def extract_model_guess(text: str) -> str:
     tokens = []
+    tokens.extend(re.findall(r"[A-Za-z]{1,6}[-_]?\d[A-Za-z0-9_-]*|\d+[A-Za-z][A-Za-z0-9_-]*", text))
     for raw in text.replace(",", " ").replace("，", " ").split():
-        token = "".join(ch for ch in raw if ch.isalnum() or ch in "-_")
+        token = "".join(ch for ch in raw if ch.isascii() and (ch.isalnum() or ch in "-_"))
         if any(ch.isdigit() for ch in token) and any(ch.isalpha() for ch in token):
             tokens.append(token)
+    tokens = list(dict.fromkeys(tokens))
     return tokens[0] if tokens else "UNKNOWN"
 
 
