@@ -19,6 +19,7 @@ class ExecutionPolicyDecision:
     status: Literal["allow", "deny", "require_confirm"]
     reasons: list[str]
     tags: list[str]
+    blocked_reason: str = ""
 
 
 def clamp_plan_to_policy(plan: TestPlan, cfg: HwConfig) -> PlanPolicyResult:
@@ -77,6 +78,7 @@ def evaluate_execution_request(
             status="deny",
             reasons=["当前自动执行路径只开放 NPN；PNP/未知型号先生成计划并等待专用流程。"],
             tags=tags + ["pnp_auto_execution_blocked"],
+            blocked_reason="pnp_execution_blocked",
         )
 
     if mode != "hardware":
@@ -87,6 +89,7 @@ def evaluate_execution_request(
             status="deny",
             reasons=["硬件执行还需要调用方显式允许；我已保留当前计划，未打开真实输出。"],
             tags=tags + ["blocked_hardware_execution"],
+            blocked_reason="preflight_blocked",
         )
 
     if not token_valid:
@@ -94,6 +97,7 @@ def evaluate_execution_request(
             status="require_confirm",
             reasons=["硬件执行需要显式确认。"],
             tags=tags + ["requires_hardware_confirmation"],
+            blocked_reason="hardware_confirmation_required",
         )
 
     return ExecutionPolicyDecision(status="allow", reasons=reasons, tags=tags)

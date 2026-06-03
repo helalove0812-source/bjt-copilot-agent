@@ -87,6 +87,12 @@ def validate_schema(samples: list[dict[str, Any]]) -> list[str]:
             errors.append(f"line {line_no}: explicit_constraints must be an object")
         if "expected_plan_constraints" in sample and not isinstance(sample.get("expected_plan_constraints"), dict):
             errors.append(f"line {line_no}: expected_plan_constraints must be an object")
+        if "expected_agent_state" in sample and not isinstance(sample.get("expected_agent_state"), str):
+            errors.append(f"line {line_no}: expected_agent_state must be a string")
+        if "expected_blocked_reason" in sample and not isinstance(sample.get("expected_blocked_reason"), str):
+            errors.append(f"line {line_no}: expected_blocked_reason must be a string")
+        if "expected_safety_actions" in sample and not isinstance(sample.get("expected_safety_actions"), list):
+            errors.append(f"line {line_no}: expected_safety_actions must be a list")
         if not isinstance(sample.get("expected_diagnosis"), list):
             errors.append(f"line {line_no}: expected_diagnosis must be a list")
         if not isinstance(sample.get("expected_actions"), list):
@@ -103,6 +109,9 @@ def evaluate_samples(samples: list[dict[str, Any]]) -> dict[str, Any]:
     parser_constraint_mismatches: list[dict[str, Any]] = []
     plan_constraint_mismatches: list[dict[str, Any]] = []
     safety_behavior_mismatches: list[dict[str, Any]] = []
+    state_mismatches: list[dict[str, Any]] = []
+    blocked_reason_mismatches: list[dict[str, Any]] = []
+    safety_action_mismatches: list[dict[str, Any]] = []
     model_mismatches: list[dict[str, Any]] = []
     diagnosis_mismatches: list[dict[str, Any]] = []
     action_mismatches: list[dict[str, Any]] = []
@@ -117,9 +126,27 @@ def evaluate_samples(samples: list[dict[str, Any]]) -> dict[str, Any]:
         text = str(sample.get("user_text") or "")
         intent = infer_intent_locally(text, state)
         rule = infer_rule_decision(text, {"has_plan": state.current_plan is not None})
-        actual_model = _actual_model(sample, state, intent)
+        agent_result = _agent_result_for_sample(text, state)
+        actual_model = _actual_model(sample, state, intent, agent_result)
+        actual_state = _actual_agent_state(agent_result)
+        actual_blocked_reason = _actual_blocked_reason(agent_result)
+        actual_safety_actions = _actual_safety_actions(agent_result)
         actual_diagnosis = _actual_diagnosis_tags(sample, text, intent)
-        actual_actions = _actual_actions(sample, intent, actual_diagnosis)
+        actual_actions = _actual_actions(sample, intent, actual_diagnosis, agent_result)
+
+        if agent_result is not None:
+            if getattr(agent_result, "next_action_items", []):
+                counters["structured_next_actions_present"] += 1
+                category_counters["structured_next_actions_present"] += 1
+            if getattr(agent_result, "completed_action_items", []):
+                counters["structured_completed_actions_present"] += 1
+                category_counters["structured_completed_actions_present"] += 1
+            if getattr(agent_result, "safety_action_items", []):
+                counters["structured_safety_actions_present"] += 1
+                category_counters["structured_safety_actions_present"] += 1
+            if actual_blocked_reason:
+                counters["structured_blocked_reason_present"] += 1
+                category_counters["structured_blocked_reason_present"] += 1
 
         expected_intent = str(sample.get("expected_intent") or "")
         if _intent_matches(expected_intent, intent.action):
@@ -169,6 +196,52 @@ def evaluate_samples(samples: list[dict[str, Any]]) -> dict[str, Any]:
                 category_counters["soft_model_bad"] += 1
                 _append_example(model_mismatches, sample, actual=actual_model, expected=expected_model)
 
+        expected_agent_state = str(sample.get("expected_agent_state") or "").strip()
+        if expected_agent_state:
+            counters["soft_state_checked"] += 1
+            category_counters["soft_state_checked"] += 1
+            if actual_state == expected_agent_state:
+                counters["soft_state_ok"] += 1
+                category_counters["soft_state_ok"] += 1
+            else:
+                counters["soft_state_bad"] += 1
+                category_counters["soft_state_bad"] += 1
+                _append_example(state_mismatches, sample, actual=actual_state, expected=expected_agent_state)
+
+        expected_blocked_reason = str(sample.get("expected_blocked_reason") or "").strip()
+        if expected_blocked_reason:
+            counters["soft_blocked_reason_checked"] += 1
+            category_counters["soft_blocked_reason_checked"] += 1
+            if actual_blocked_reason == expected_blocked_reason:
+                counters["soft_blocked_reason_ok"] += 1
+                category_counters["soft_blocked_reason_ok"] += 1
+            else:
+                counters["soft_blocked_reason_bad"] += 1
+                category_counters["soft_blocked_reason_bad"] += 1
+                _append_example(
+                    blocked_reason_mismatches,
+                    sample,
+                    actual=actual_blocked_reason,
+                    expected=expected_blocked_reason,
+                )
+
+        expected_safety_actions = [str(item) for item in sample.get("expected_safety_actions", []) if str(item)]
+        if expected_safety_actions:
+            counters["soft_safety_actions_checked"] += 1
+            category_counters["soft_safety_actions_checked"] += 1
+            if _list_soft_match(actual_safety_actions, expected_safety_actions):
+                counters["soft_safety_actions_ok"] += 1
+                category_counters["soft_safety_actions_ok"] += 1
+            else:
+                counters["soft_safety_actions_bad"] += 1
+                category_counters["soft_safety_actions_bad"] += 1
+                _append_example(
+                    safety_action_mismatches,
+                    sample,
+                    actual=actual_safety_actions,
+                    expected=expected_safety_actions,
+                )
+
         plan = None
         if intent.action in {"create_plan", "modify_plan"}:
             try:
@@ -178,7 +251,7 @@ def evaluate_samples(samples: list[dict[str, Any]]) -> dict[str, Any]:
 
         expected_behaviors = _expected_safety_behaviors_for(sample)
         if expected_behaviors:
-            actual_behaviors = _actual_safety_behaviors(sample, intent, plan)
+            actual_behaviors = _actual_safety_behaviors(sample, intent, plan or state.current_plan)
             for behavior in expected_behaviors:
                 counters["safety_behavior_checked"] += 1
                 category_counters["safety_behavior_checked"] += 1
@@ -301,6 +374,27 @@ def evaluate_samples(samples: list[dict[str, Any]]) -> dict[str, Any]:
             "safety_behavior": safety_behavior_mismatches,
         },
         "soft_metrics": {
+            "state": _soft_metric_payload(
+                counters,
+                checked_key="soft_state_checked",
+                ok_key="soft_state_ok",
+                bad_key="soft_state_bad",
+                mismatches=state_mismatches,
+            ),
+            "blocked_reason": _soft_metric_payload(
+                counters,
+                checked_key="soft_blocked_reason_checked",
+                ok_key="soft_blocked_reason_ok",
+                bad_key="soft_blocked_reason_bad",
+                mismatches=blocked_reason_mismatches,
+            ),
+            "safety_actions": _soft_metric_payload(
+                counters,
+                checked_key="soft_safety_actions_checked",
+                ok_key="soft_safety_actions_ok",
+                bad_key="soft_safety_actions_bad",
+                mismatches=safety_action_mismatches,
+            ),
             "model": _soft_metric_payload(
                 counters,
                 checked_key="soft_model_checked",
@@ -324,7 +418,25 @@ def evaluate_samples(samples: list[dict[str, Any]]) -> dict[str, Any]:
             ),
         },
         "category_breakdown": _category_breakdown_payload(category_breakdown),
-        "non_gating_fields": ["expected_model", "expected_diagnosis", "expected_actions"],
+        "structured_support": {
+            "total": len(samples),
+            "next_action_items_present": counters["structured_next_actions_present"],
+            "next_action_items_rate": _support_rate(counters["structured_next_actions_present"], len(samples)),
+            "completed_action_items_present": counters["structured_completed_actions_present"],
+            "completed_action_items_rate": _support_rate(counters["structured_completed_actions_present"], len(samples)),
+            "safety_action_items_present": counters["structured_safety_actions_present"],
+            "safety_action_items_rate": _support_rate(counters["structured_safety_actions_present"], len(samples)),
+            "blocked_reason_present": counters["structured_blocked_reason_present"],
+            "blocked_reason_rate": _support_rate(counters["structured_blocked_reason_present"], len(samples)),
+        },
+        "non_gating_fields": [
+            "expected_agent_state",
+            "expected_blocked_reason",
+            "expected_safety_actions",
+            "expected_model",
+            "expected_diagnosis",
+            "expected_actions",
+        ],
         "raw_counts": dict(counters),
     }
 
@@ -387,8 +499,17 @@ def _state_from_sample(sample: dict[str, Any]) -> AIConversationState:
             depth = current_plan.get("depth") or "standard"
             state.current_plan = build_test_plan(model=model, goal=goal, depth=depth)
     measurements = context.get("measurements")
-    if isinstance(measurements, list) and measurements:
+    current_execution = context.get("current_execution")
+    if isinstance(current_execution, dict) and current_execution:
+        state.current_execution = dict(current_execution)
+    elif isinstance(measurements, list) and measurements:
         state.current_execution = {"measurements": measurements}
+    pending_profile_model = context.get("pending_profile_model")
+    if isinstance(pending_profile_model, str) and pending_profile_model.strip():
+        state.pending_profile_model = pending_profile_model.strip()
+    pending_profile_fields = context.get("pending_profile_fields")
+    if isinstance(pending_profile_fields, dict) and pending_profile_fields:
+        state.pending_profile_fields = dict(pending_profile_fields)
     return state
 
 
@@ -579,6 +700,10 @@ def _accuracy(ok: int, bad: int) -> float | None:
     return ok / total if total else None
 
 
+def _support_rate(count: int, total: int) -> float | None:
+    return count / total if total else None
+
+
 def _append_example(items: list[dict[str, Any]], sample: dict[str, Any], *, actual: Any, expected: Any) -> None:
     if len(items) >= 10:
         return
@@ -674,6 +799,15 @@ def _category_breakdown_payload(category_breakdown: dict[str, Counter[str]]) -> 
             "intent_accuracy": _accuracy(counters.get("intent_ok", 0), counters.get("intent_bad", 0)),
             "goal_accuracy": _accuracy(counters.get("goal_ok", 0), counters.get("goal_bad", 0)),
             "depth_accuracy": _accuracy(counters.get("depth_ok", 0), counters.get("depth_bad", 0)),
+            "soft_state_accuracy": _accuracy(counters.get("soft_state_ok", 0), counters.get("soft_state_bad", 0)),
+            "soft_blocked_reason_accuracy": _accuracy(
+                counters.get("soft_blocked_reason_ok", 0),
+                counters.get("soft_blocked_reason_bad", 0),
+            ),
+            "soft_safety_actions_accuracy": _accuracy(
+                counters.get("soft_safety_actions_ok", 0),
+                counters.get("soft_safety_actions_bad", 0),
+            ),
             "soft_model_accuracy": _accuracy(counters.get("soft_model_ok", 0), counters.get("soft_model_bad", 0)),
             "soft_diagnosis_accuracy": _accuracy(counters.get("soft_diagnosis_ok", 0), counters.get("soft_diagnosis_bad", 0)),
             "soft_actions_accuracy": _accuracy(counters.get("soft_actions_ok", 0), counters.get("soft_actions_bad", 0)),
@@ -687,6 +821,9 @@ def _top_weak_signals(counters: Counter[str]) -> list[str]:
         "intent": counters.get("intent_bad", 0),
         "goal": counters.get("goal_bad", 0),
         "depth": counters.get("depth_bad", 0),
+        "state": counters.get("soft_state_bad", 0),
+        "blocked_reason": counters.get("soft_blocked_reason_bad", 0),
+        "safety_actions": counters.get("soft_safety_actions_bad", 0),
         "model": counters.get("soft_model_bad", 0),
         "diagnosis": counters.get("soft_diagnosis_bad", 0),
         "actions": counters.get("soft_actions_bad", 0),
@@ -694,9 +831,10 @@ def _top_weak_signals(counters: Counter[str]) -> list[str]:
     return [name for name, count in sorted(signals.items(), key=lambda item: (-item[1], item[0])) if count > 0][:3]
 
 
-def _actual_model(sample: dict[str, Any], state: AIConversationState, intent: Any) -> str:
+def _actual_model(sample: dict[str, Any], state: AIConversationState, intent: Any, agent_result: Any = None) -> str:
     for candidate in (
         getattr(intent, "model", None),
+        getattr(getattr(agent_result, "plan", None), "model", None) if agent_result else None,
         getattr(state.current_plan, "model", None) if state.current_plan else None,
         sample.get("context", {}).get("current_plan", {}).get("model") if isinstance(sample.get("context"), dict) else None,
     ):
@@ -717,9 +855,9 @@ def _actual_diagnosis_tags(sample: dict[str, Any], text: str, intent: Any) -> li
     )
 
 
-def _actual_actions(sample: dict[str, Any], intent: Any, actual_diagnosis: list[str]) -> list[str]:
+def _actual_actions(sample: dict[str, Any], intent: Any, actual_diagnosis: list[str], agent_result: Any = None) -> list[str]:
     actions: list[str] = []
-    structured_actions = _actual_actions_from_agent_output(sample)
+    structured_actions = _actual_actions_from_agent_output(sample, agent_result=agent_result)
     actions.extend(structured_actions)
     text = str(sample.get("user_text") or "")
     if intent.action:
@@ -751,12 +889,40 @@ def _actual_actions(sample: dict[str, Any], intent: Any, actual_diagnosis: list[
     return sorted(set(action for action in actions if action))
 
 
-def _actual_actions_from_agent_output(sample: dict[str, Any]) -> list[str]:
-    state = _state_from_sample(sample)
-    text = str(sample.get("user_text") or "")
+def _agent_result_for_sample(text: str, state: AIConversationState) -> Any:
     try:
-        result = TestAgent(state).run_turn(text, default_mode="simulation")
+        return TestAgent(state).run_turn(text, default_mode="simulation")
     except Exception:
+        return None
+
+
+def _actual_agent_state(agent_result: Any) -> str:
+    return str(getattr(agent_result, "agent_state", "") or "").strip()
+
+
+def _actual_blocked_reason(agent_result: Any) -> str:
+    return str(getattr(agent_result, "blocked_reason", "") or "").strip()
+
+
+def _actual_safety_actions(agent_result: Any) -> list[str]:
+    if agent_result is None:
+        return []
+    return sorted(
+        {
+            str(item.get("action") or "").strip()
+            for item in getattr(agent_result, "safety_action_items", [])
+            if str(item.get("action") or "").strip()
+        }
+    )
+
+
+def _actual_actions_from_agent_output(sample: dict[str, Any], agent_result: Any = None) -> list[str]:
+    result = agent_result
+    if result is None:
+        state = _state_from_sample(sample)
+        text = str(sample.get("user_text") or "")
+        result = _agent_result_for_sample(text, state)
+    if result is None:
         return []
 
     actions: list[str] = []

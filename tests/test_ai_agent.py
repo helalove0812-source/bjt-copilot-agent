@@ -99,7 +99,7 @@ def test_agent_saves_candidate_profile_to_user_store(monkeypatch, tmp_path) -> N
     result = TestAgent(state).run_turn("把这个型号保存到资料库")
 
     assert result.intent.action == "save_profile"
-    assert result.agent_state == "profile_saved"
+    assert result.agent_state == "awaiting_profile_fields"
     assert "已将 XYZ123 写入本地型号库" in result.response
     loaded = load_user_profiles(store_path)
     assert loaded["XYZ123"].confidence == "user_confirmed"
@@ -138,7 +138,7 @@ def test_agent_updates_existing_candidate_profile_in_user_store(monkeypatch, tmp
     result = TestAgent(update_state).run_turn("更新这个型号的规格")
 
     assert result.intent.action == "update_profile"
-    assert result.agent_state == "profile_saved"
+    assert result.agent_state == "awaiting_profile_fields"
     assert "已更新 XYZ123 的本地型号库记录" in result.response
     loaded = load_user_profiles(store_path)
     assert loaded["XYZ123"].vceo_max_v == 50.0
@@ -235,6 +235,42 @@ def test_unknown_model_first_turn_waits_for_profile_fields(monkeypatch) -> None:
     assert "补充未知型号" in result.next_actions[0]
     assert result.agent_steps[-1]["status"] == "waiting"
     assert result.to_dict()["agent_state"] == "awaiting_profile_fields"
+
+
+def test_agent_turn_exposes_unknown_model_blocked_reason(monkeypatch) -> None:
+    monkeypatch.setenv("BJT_AI_MODE", "local")
+    state = AIConversationState(
+        pending_profile_model="XYZ123",
+        pending_profile_fields={"bjt_type": "NPN", "vceo_max_v": 40.0},
+    )
+
+    result = TestAgent(state).run_turn("继续生成计划", default_mode="simulation")
+
+    assert result.agent_state == "awaiting_profile_fields"
+    assert result.execution_state == "not_started"
+    assert result.blocked_reason == "unknown_model_incomplete"
+    assert result.blocked_reason_item["id"] == "unknown_model_incomplete"
+
+
+def test_agent_turn_exposes_runtime_abort_as_canonical_state(monkeypatch) -> None:
+    monkeypatch.setenv("BJT_AI_MODE", "local")
+    state = AIConversationState()
+    state.current_plan = build_test_plan(model="S8050", goal="beta", depth="standard")
+    state.record_execution(
+        {
+            "mode": "hardware",
+            "measurements": [{"Ic": 0.031, "Vce": 0.1, "beta": 310.0, "region": "saturation"}],
+            "aborted": True,
+            "abort_reason": "当前 Ic 超过计划上限，已停止后续硬件测量。",
+        }
+    )
+
+    result = TestAgent(state).run_turn("解释一下这次为什么停了", default_mode="simulation")
+
+    assert result.agent_state == "aborted"
+    assert result.execution_state == "aborted"
+    assert result.blocked_reason == "runtime_abort"
+    assert result.blocked_reason_item["label"] == "运行时安全中止"
 
 
 def test_agent_plan_result_exposes_next_actions(monkeypatch) -> None:
@@ -452,7 +488,7 @@ def test_agent_autonomously_refines_plan_after_aborted_execution(monkeypatch) ->
     result = agent.run_turn("下一步你自己看着办，优化一下计划")
 
     assert result.intent.action == "modify_plan"
-    assert result.agent_state == "plan_refined"
+    assert result.agent_state == "aborted"
     assert result.plan is not None
     assert result.plan.depth == "conservative"
     assert result.plan.ic_limit_a < original_ic_limit
@@ -495,7 +531,7 @@ def test_agent_autonomous_refine_deepens_staged_plan_after_stable_result(monkeyp
     result = agent.run_turn("结果正常，下一步你来定")
 
     assert result.intent.action == "modify_plan"
-    assert result.agent_state == "plan_refined"
+    assert result.agent_state == "completed"
     assert result.plan is not None
     assert result.plan.depth == "deep"
     assert len(result.plan.vbb_steps) > original_points
@@ -535,7 +571,7 @@ def test_agent_autonomous_refine_uses_llm_for_explanation_when_cloud_enabled(mon
 
     result = TestAgent(state).run_turn("下一步你来定，自动调整")
 
-    assert result.agent_state == "plan_refined"
+    assert result.agent_state == "aborted"
     assert result.used_ai_api is True
     assert result.llm_provider == "deepseek:intent-model,deepseek:autonomy-model"
     assert result.llm_usage == {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15}
@@ -597,6 +633,17 @@ def test_agent_hardware_request_uses_policy_require_confirm(monkeypatch) -> None
     assert "使用一次性令牌继续硬件执行" in result.next_actions
 
 
+def test_agent_turn_returns_safety_action_items_for_hardware_confirmation(monkeypatch) -> None:
+    monkeypatch.setenv("BJT_AI_MODE", "local")
+    state = AIConversationState()
+    state.current_plan = build_test_plan(model="S8050", goal="beta", depth="standard", mode="hardware")
+
+    result = TestAgent(state).run_turn("开始硬件执行", default_mode="hardware", allow_hardware=True)
+
+    actions = [item["action"] for item in result.safety_action_items]
+    assert actions == ["request_hardware_confirmation", "continue_hardware_with_token"]
+
+
 def test_agent_denies_pnp_hardware_with_specific_message(monkeypatch) -> None:
     monkeypatch.setenv("BJT_AI_MODE", "local")
     state = AIConversationState()
@@ -609,7 +656,7 @@ def test_agent_denies_pnp_hardware_with_specific_message(monkeypatch) -> None:
     assert result.execution is None
     assert "NPN" in result.response
     assert "调用方显式允许" not in result.response
-    assert result.agent_state == "execution_blocked"
+    assert result.agent_state == "aborted"
 
 
 def test_agent_requires_confirmation_token_before_hardware_execution(monkeypatch) -> None:
@@ -687,7 +734,7 @@ def test_agent_preserves_aborted_execution_result(monkeypatch) -> None:
 
     assert second.execution["aborted"] is True
     assert second.execution["abort_tags"] == ["runtime_ic_limit_exceeded"]
-    assert second.agent_state == "execution_aborted"
+    assert second.agent_state == "aborted"
     assert "降低限值或检查接线后重试" in second.next_actions
     assert "中止" in second.execution_summary
     assert "当前 Ic 超过计划上限" in second.execution_summary

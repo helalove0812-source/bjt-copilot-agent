@@ -316,6 +316,22 @@ def test_ai_chat_exposes_hardware_confirmation_agent_view(monkeypatch) -> None:
     assert "使用执行按钮并输入确认短语" in result["next_actions"]
 
 
+def test_api_exposes_safety_action_items(monkeypatch) -> None:
+    monkeypatch.setenv("BJT_AI_MODE", "local")
+
+    status, result = call_ai_chat_handler(
+        {
+            "text": "S8050 硬件跑一下",
+            "mode": "hardware",
+            "context": {},
+            "ai_settings": {"provider": "local"},
+        }
+    )
+
+    assert status == 200
+    assert any(item["action"] == "request_hardware_confirmation" for item in result["safety_action_items"])
+
+
 def test_ai_chat_compares_execution_history_from_context(monkeypatch) -> None:
     monkeypatch.setenv("BJT_AI_MODE", "local")
     history = [
@@ -532,6 +548,36 @@ def test_preflight_plan_api_requires_confirmation_without_execution(monkeypatch)
     assert result["agent_steps"][-1]["detail"] == result["preflight"]["preflight_summary"]
 
 
+def test_preflight_api_returns_canonical_blocked_reason(monkeypatch) -> None:
+    plan = build_test_plan(
+        model="S8550",
+        goal="beta",
+        depth="standard",
+        mode="hardware",
+        bjt_type="PNP",
+    )
+
+    def fail_execute_plan(*args, **kwargs):
+        del args, kwargs
+        raise AssertionError("preflight endpoint must not execute the plan")
+
+    monkeypatch.setattr(api_server, "execute_plan", fail_execute_plan)
+
+    status, result = call_preflight_plan_handler(
+        {
+            "mode": "hardware",
+            "allow_hardware": True,
+            "plan": plan.to_dict(),
+        },
+    )
+
+    assert status == 200
+    assert result["agent_state"] == "aborted"
+    assert result["execution_state"] == "blocked"
+    assert result["blocked_reason"] == "pnp_execution_blocked"
+    assert result["blocked_reason_item"]["label"] == "PNP/未知型号禁止自动硬件执行"
+
+
 def test_preflight_plan_api_reports_ready_after_confirmation_phrase(monkeypatch) -> None:
     plan = build_test_plan(model="S8050", goal="beta", depth="standard", mode="hardware")
 
@@ -587,7 +633,9 @@ def test_execute_plan_api_exposes_aborted_agent_view(monkeypatch) -> None:
 
     assert status == 200
     assert result["ok"] is True
-    assert result["agent_state"] == "execution_aborted"
+    assert result["agent_state"] == "aborted"
+    assert result["execution_state"] == "aborted"
+    assert result["blocked_reason"] == "runtime_abort"
     assert "降低限值或检查接线后重试" in result["next_actions"]
     assert result["agent_steps"][-1]["label"] == "运行时安全中止"
 

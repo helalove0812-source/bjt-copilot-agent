@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ai.safety import ExecutionPolicyDecision
+from ai.safety import ExecutionPolicyDecision, evaluate_execution_request
 from app.runtime import Runtime
 from app.services import run_full_suite, run_npn_static_bringup, run_scan_curves
 from ai.test_planner import build_test_plan
@@ -87,6 +87,26 @@ def test_execute_plan_accepts_explicit_hardware_confirmation(monkeypatch) -> Non
             "token_valid": True,
         }
     ]
+
+
+def test_execution_policy_decision_exposes_blocked_reason() -> None:
+    plan = build_test_plan(
+        model="S8550",
+        goal="beta",
+        depth="standard",
+        mode="hardware",
+        bjt_type="PNP",
+    )
+
+    decision = evaluate_execution_request(
+        plan=plan,
+        mode="hardware",
+        allow_hardware=True,
+        token_valid=True,
+    )
+
+    assert decision.status == "deny"
+    assert decision.blocked_reason == "pnp_execution_blocked"
 
 
 def test_api_hardware_confirmation_phrase_is_required() -> None:

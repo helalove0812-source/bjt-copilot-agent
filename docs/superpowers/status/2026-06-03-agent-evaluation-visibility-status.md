@@ -18,6 +18,20 @@
   - `soft_metrics.diagnosis.confusion_pairs`
 - 已补少量 regression cases 与主线 v3 样本，用于暴露复杂意图、多轮上下文、未知型号、结果解释、器件库命令的现状
 
+## 阶段 A 收口补充
+
+- `tests/test_ai_agent.py` 中残留的旧 `agent_state` 断言已切到当前 canonical schema
+- 目前测试口径按运行时真实输出区分：
+  - `execution_blocked` / `execution_aborted` 统一收敛到 `aborted`
+  - `plan_refined` 在 canonical 视图下收敛为 `completed`
+  - profile 保存/更新路径不再断言旧的 `profile_saved`
+- 阶段 A 的可见性重点继续放在统一输出：
+  - `agent_state`
+  - `execution_state`
+  - `blocked_reason`
+  - `blocked_reason_item`
+  - `safety_action_items`
+
 ## 当前硬门槛
 
 仍由主回归脚本判定：

@@ -10,7 +10,7 @@ import secrets
 
 from core.types import HwConfig
 
-from ai.action_taxonomy import action_items_from_labels
+from ai.action_taxonomy import action_items_from_labels, safety_action_items_from_policy
 from ai.assistant import build_execution_stats, summarize_execution_with_ai, summarize_plan_with_ai
 from ai.autonomy import refine_plan_after_execution
 from ai.conversation import (
@@ -23,6 +23,7 @@ from ai.conversation import (
 )
 from ai.rules import diagnose_context, diagnose_tags
 from ai.safety import evaluate_execution_request
+from ai.state_taxonomy import blocked_reason_item, canonical_agent_state, pick_blocked_reason, pick_execution_state
 from ai.test_planner import TestPlan
 from ai.tools import execute_plan
 from ai.transistor_db import TransistorProfile
@@ -52,12 +53,16 @@ class AgentTurnResult:
     hardware_confirmation_required: bool = False
     hardware_confirmation_token: str = ""
     agent_state: str = "idle"
+    execution_state: str = "not_started"
+    blocked_reason: str = ""
+    blocked_reason_item: dict = field(default_factory=dict)
     required_inputs: list[str] = field(default_factory=list)
     next_actions: list[str] = field(default_factory=list)
     next_action_items: list[dict] = field(default_factory=list)
     diagnosis_tags: list[str] = field(default_factory=list)
     completed_actions: list[str] = field(default_factory=list)
     completed_action_items: list[dict] = field(default_factory=list)
+    safety_action_items: list[dict] = field(default_factory=list)
     agent_steps: list[dict] = field(default_factory=list)
 
     def to_dict(self) -> dict:
@@ -73,12 +78,16 @@ class AgentTurnResult:
             "hardware_confirmation_required": self.hardware_confirmation_required,
             "hardware_confirmation_token": self.hardware_confirmation_token,
             "agent_state": self.agent_state,
+            "execution_state": self.execution_state,
+            "blocked_reason": self.blocked_reason,
+            "blocked_reason_item": self.blocked_reason_item,
             "required_inputs": self.required_inputs,
             "next_actions": self.next_actions,
             "next_action_items": self.next_action_items,
             "diagnosis_tags": self.diagnosis_tags,
             "completed_actions": self.completed_actions,
             "completed_action_items": self.completed_action_items,
+            "safety_action_items": self.safety_action_items,
             "agent_steps": self.agent_steps,
         }
 
@@ -114,6 +123,8 @@ class TestAgent:
         next_actions: list[str] = []
         diagnosis_tags_out: list[str] = []
         completed_actions: list[str] = []
+        safety_policy_tags: list[str] = []
+        safety_policy_reasons: list[str] = []
         agent_steps: list[dict] = [_agent_step("done", "解析意图", intent.action)]
 
         if intent.action in {"create_plan", "modify_plan"}:
@@ -225,6 +236,8 @@ class TestAgent:
                     token_valid=token_valid,
                 )
                 if decision.status == "require_confirm":
+                    safety_policy_tags = list(decision.tags)
+                    safety_policy_reasons = list(decision.reasons)
                     hardware_confirmation_required = True
                     issued_hardware_token = self._issue_hardware_confirmation(plan)
                     response = "硬件执行需要显式确认；我已生成一次性确认令牌，未打开真实输出。"
@@ -233,6 +246,8 @@ class TestAgent:
                     next_actions = ["使用一次性令牌继续硬件执行", "取消或修改当前计划"]
                     agent_steps.append(_agent_step("waiting", "等待硬件确认", "未打开真实输出"))
                 elif decision.status == "deny":
+                    safety_policy_tags = list(decision.tags)
+                    safety_policy_reasons = list(decision.reasons)
                     if "pnp_auto_execution_blocked" in decision.tags:
                         response = "当前自动执行路径只开放 NPN；PNP/未知型号请先生成计划并走专用流程。"
                     elif "blocked_hardware_execution" in decision.tags:
@@ -342,6 +357,23 @@ class TestAgent:
 
         self.state.add("user", text)
         self.state.add("assistant", response)
+        execution_context = execution or self.state.current_execution
+        pending_profile_model = self.state.pending_profile_model if self.state.pending_profile_model else None
+        blocked_reason = pick_blocked_reason(
+            pending_profile_model=pending_profile_model,
+            execution=execution_context,
+        )
+        execution_state = pick_execution_state(
+            execution=execution_context,
+            raw_agent_state=agent_state,
+            blocked_reason=blocked_reason,
+        )
+        agent_state = canonical_agent_state(
+            raw_agent_state=agent_state,
+            execution_state=execution_state,
+            pending_profile_model=pending_profile_model,
+        )
+        safety_action_items = safety_action_items_from_policy(safety_policy_tags, safety_policy_reasons)
         return AgentTurnResult(
             response=response,
             intent=intent,
@@ -354,12 +386,19 @@ class TestAgent:
             hardware_confirmation_required=hardware_confirmation_required,
             hardware_confirmation_token=issued_hardware_token,
             agent_state=agent_state,
+            execution_state=execution_state,
+            blocked_reason=blocked_reason,
+            blocked_reason_item=blocked_reason_item(
+                blocked_reason,
+                detail=str((execution_context or {}).get("abort_reason") or ""),
+            ),
             required_inputs=required_inputs,
             next_actions=next_actions,
             next_action_items=_action_items_from_labels(next_actions),
             diagnosis_tags=diagnosis_tags_out,
             completed_actions=completed_actions,
             completed_action_items=_action_items_from_labels(completed_actions),
+            safety_action_items=safety_action_items,
             agent_steps=agent_steps,
         )
 

@@ -15,7 +15,7 @@ from app.services import (
     run_scan_curves,
     run_scope_check,
 )
-from ai.action_taxonomy import action_items_from_labels
+from ai.action_taxonomy import action_items_from_labels, safety_action_items_from_labels
 from ai.assistant import summarize_plan_with_ai
 from ai.autonomy import refine_plan_after_execution
 from ai.conversation import (
@@ -25,6 +25,8 @@ from ai.conversation import (
     interpret_user_message,
 )
 from ai.rules import diagnose_context
+from ai.safety import evaluate_execution_request
+from ai.state_taxonomy import blocked_reason_item
 from ai.test_planner import TestPlan, plan_from_text
 from ai.tools import execute_plan, preflight_plan
 from ai.user_profile_store import (
@@ -410,6 +412,14 @@ def _execution_agent_view(result: dict) -> dict:
     }
 
 
+def _canonical_policy_fields(*, blocked_reason: str, detail: str, execution_state: str) -> dict:
+    return {
+        "execution_state": execution_state,
+        "blocked_reason": blocked_reason,
+        "blocked_reason_item": blocked_reason_item(blocked_reason, detail=detail),
+    }
+
+
 def _preflight_agent_view(result: dict) -> dict:
     steps = [_agent_step("done", "硬件预检", str(result.get("mode") or "unknown"))]
     summary = str(result.get("preflight_summary") or "")
@@ -433,7 +443,7 @@ def _preflight_agent_view(result: dict) -> dict:
     detail = summary or (str(reasons[0]) if reasons else "策略阻止执行")
     steps.append(_agent_step("blocked", "策略阻止", detail))
     return {
-        "agent_state": "preflight_blocked",
+        "agent_state": "aborted",
         "required_inputs": [],
         "next_actions": ["查看阻止原因", "修改计划或切换为仿真模式"],
         "agent_steps": steps,
@@ -773,13 +783,44 @@ class ApiHandler(BaseHTTPRequestHandler):
             if mode == "hardware" and not allow_hardware:
                 raise ValueError("hardware execution requires allow_hardware=true")
             plan = _plan_from_mapping(payload.get("plan"))
+            token_valid = _hardware_token_valid_from_payload(mode, payload)
             result = execute_plan(
                 plan,
                 mode=mode,
                 allow_hardware=allow_hardware,
-                token_valid=_hardware_token_valid_from_payload(mode, payload),
+                token_valid=token_valid,
             )
-            self._send_json(200, {"ok": True, "execution": result, **_execution_agent_view(result)})
+            decision = evaluate_execution_request(
+                plan=plan,
+                mode=mode,
+                allow_hardware=allow_hardware,
+                token_valid=token_valid,
+            )
+            response = {"ok": True, "execution": result, **_execution_agent_view(result)}
+            if result.get("aborted"):
+                canonical = _canonical_policy_fields(
+                    blocked_reason="runtime_abort",
+                    detail=str(result.get("abort_reason") or ""),
+                    execution_state="aborted",
+                )
+                result.update(canonical)
+                response.update(canonical)
+                response["agent_state"] = "aborted"
+            elif result.get("skipped") and decision.status != "allow" and decision.blocked_reason:
+                canonical = _canonical_policy_fields(
+                    blocked_reason=decision.blocked_reason,
+                    detail=str(decision.reasons[0]) if decision.reasons else "",
+                    execution_state="blocked",
+                )
+                result.update(canonical)
+                response.update(canonical)
+                if decision.status == "deny":
+                    response["agent_state"] = "aborted"
+            elif result.get("skipped"):
+                response.update(_canonical_policy_fields(blocked_reason="", detail="", execution_state="skipped"))
+            else:
+                response.update(_canonical_policy_fields(blocked_reason="", detail="", execution_state="completed"))
+            self._send_json(200, response)
         except Exception as exc:
             self._send_json(400, {"ok": False, "error": str(exc)})
 
@@ -790,13 +831,30 @@ class ApiHandler(BaseHTTPRequestHandler):
             if mode not in {"hardware", "simulation"}:
                 raise ValueError("unsupported mode")
             plan = _plan_from_mapping(payload.get("plan"))
+            allow_hardware = bool(payload.get("allow_hardware"))
+            token_valid = _hardware_token_valid_from_payload(mode, payload)
             result = preflight_plan(
                 plan,
                 mode=mode,
-                allow_hardware=bool(payload.get("allow_hardware")),
-                token_valid=_hardware_token_valid_from_payload(mode, payload),
+                allow_hardware=allow_hardware,
+                token_valid=token_valid,
             )
-            self._send_json(200, {"ok": True, "preflight": result, **_preflight_agent_view(result)})
+            decision = evaluate_execution_request(
+                plan=plan,
+                mode=mode,
+                allow_hardware=allow_hardware,
+                token_valid=token_valid,
+            )
+            response = {"ok": True, "preflight": result, **_preflight_agent_view(result)}
+            execution_state = "not_started" if decision.status == "allow" else "blocked"
+            canonical = _canonical_policy_fields(
+                blocked_reason=decision.blocked_reason,
+                detail=str(decision.reasons[0]) if decision.reasons else "",
+                execution_state=execution_state,
+            )
+            result.update(canonical)
+            response.update(canonical)
+            self._send_json(200, response)
         except Exception as exc:
             self._send_json(400, {"ok": False, "error": str(exc)})
 
@@ -946,6 +1004,7 @@ class ApiHandler(BaseHTTPRequestHandler):
                 agent_view["completed_actions"] = completed_actions
             agent_view["next_action_items"] = action_items_from_labels(agent_view.get("next_actions", []))
             agent_view["completed_action_items"] = action_items_from_labels(completed_actions)
+            agent_view["safety_action_items"] = safety_action_items_from_labels(agent_view.get("next_actions", []))
             self._send_json(
                 200,
                 {

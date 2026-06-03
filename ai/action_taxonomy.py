@@ -104,6 +104,15 @@ LABEL_RULES: list[tuple[str, list[str]]] = [
 ]
 
 
+POLICY_TAG_TO_ACTIONS: dict[str, list[str]] = {
+    "requires_hardware_confirmation": ["request_hardware_confirmation", "continue_hardware_with_token"],
+    "blocked_hardware_execution": ["request_hardware_after_safety_check"],
+    "pnp_auto_execution_blocked": ["reject_unsafe", "verify_datasheet_and_pinout"],
+    "unknown_model_fallback": ["complete_profile_fields"],
+    "clamped_to_hardware_max": ["clamp_current", "clamp_power", "explain_limit"],
+}
+
+
 def action_label(action: str) -> str:
     return ACTION_METADATA.get(action, {}).get("label", action)
 
@@ -148,6 +157,18 @@ def action_items_from_labels(labels: list[str]) -> list[dict]:
                 items.append(action_item(action, label=label))
                 seen.add(key)
     return items
+
+
+def safety_action_items_from_policy(tags: list[str], reasons: list[str]) -> list[dict]:
+    actions: list[str] = []
+    for tag in tags:
+        actions.extend(POLICY_TAG_TO_ACTIONS.get(tag, []))
+    detail = "；".join(str(item) for item in reasons if item)
+    return [action_item(action, reason=detail) for action in dict.fromkeys(actions)]
+
+
+def safety_action_items_from_labels(labels: list[str]) -> list[dict]:
+    return [item for item in action_items_from_labels(labels) if item.get("kind") == "safety"]
 
 
 def _slugify_action_label(label: str) -> str:
