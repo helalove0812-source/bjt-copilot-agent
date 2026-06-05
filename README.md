@@ -3,7 +3,7 @@
 这是一个面向双极型晶体管（BJT）的自动化测试系统仓库，围绕雨骤片上仪器平台构建，集成了：
 
 - 本地仿真与真机测试链路
-- CLI、桌面端、Web 前端三种交互入口
+- CLI 与 Web 前端两种交互入口
 - `BJTagent` 测试 Agent
 - 规则优先的意图解析与计划生成
 - 可选 LLM 辅助
@@ -27,7 +27,7 @@
 
 ```mermaid
 flowchart LR
-    U[用户 / 工程师] --> CLI[CLI / 桌面 GUI / Web UI]
+    U[用户 / 工程师] --> CLI[CLI / Web UI]
     CLI --> AGENT[BJTagent]
     AGENT --> RULES[规则解析与计划生成]
     AGENT --> LLM[可选 LLM 辅助]
@@ -134,6 +134,10 @@ python3 ai_cli.py 测 S8050 保守测试 beta --mode hardware --execute --confir
 ### Web / 前端相关
 
 ```bash
+python3 main.py
+# 或
+python3 start_web.py
+
 cd frontend
 npm run build
 ```
@@ -154,12 +158,12 @@ python3 cli.py npn-static --mode hardware --vcc 3.0 --vbb 2.0
 | `app/` | 服务编排与运行时入口 |
 | `api_server.py` | Web/API 服务入口 |
 | `frontend/` | Web 前端与 `BJTagent` 交互层 |
-| `gui/` | 桌面 GUI |
 | `measurement/` | 测量、扫描、检测与曲线分析 |
 | `core/` | 驱动抽象、设备层、安全常量和类型 |
 | `scripts/` | 回归、数据评估、迁移脚本 |
 | `tests/` | pytest 与前端 smoke |
 | `数据/` | Agent 回归数据集与审计文件 |
+| `docs/reference/` | 技术方案与 Web UI 设计参考 |
 | `docs/superpowers/` | 设计、计划、状态文档 |
 
 ## 安全边界
@@ -196,7 +200,7 @@ CI 工作流：
 
 当前仓库已经具备以下闭环：
 
-- Web、CLI、桌面端三条入口并存
+- Web UI 与 CLI 两条入口并存，后续交互主线使用 Web UI
 - `BJTagent` 可接入本地规则，也可接可选大模型 API
 - 用户器件库与未知型号沉淀能力已接通
 - 前端支持 Agent 状态、日志、器件库面板和运行时中止展示

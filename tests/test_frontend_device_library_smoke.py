@@ -9,8 +9,10 @@ def test_device_library_panel_has_primary_tabs() -> None:
     source = APP_FILE.read_text(encoding="utf-8")
 
     assert '"BJTagent"' in source
+    assert '"设置"' in source
     assert '"器件库"' in source
-    assert "options={[\"BJTagent\", \"器件库\"]}" in source
+    assert 'const RIGHT_PANEL_OPTIONS = ["BJTagent", "设置", "器件库"];' in source
+    assert "options={RIGHT_PANEL_OPTIONS}" in source
 
 
 def test_device_library_panel_has_search_and_create_controls() -> None:

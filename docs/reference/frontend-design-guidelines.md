@@ -1,4 +1,4 @@
-# DESIGN.md
+# Web UI Design Guidelines
 
 ## Reference
 

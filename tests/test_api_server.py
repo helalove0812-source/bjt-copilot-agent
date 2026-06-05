@@ -83,6 +83,29 @@ def test_api_server_main_loads_dotenv_before_serving(monkeypatch) -> None:
     assert calls[1] == ("serve", ("127.0.0.1", 8765))
 
 
+def test_apply_ai_settings_accepts_custom_model_endpoint(monkeypatch) -> None:
+    monkeypatch.delenv("DEEPSEEK_MODEL", raising=False)
+    monkeypatch.delenv("DEEPSEEK_BASE_URL", raising=False)
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+
+    api_server._apply_ai_settings(
+        {
+            "ai_settings": {
+                "provider": "deepseek",
+                "model": "custom-chat",
+                "base_url": "https://example.test/v1",
+                "api_key": "secret",
+            }
+        }
+    )
+
+    assert os.environ["BJT_AI_MODE"] == "cloud"
+    assert os.environ["BJT_AI_PROVIDER"] == "deepseek"
+    assert os.environ["DEEPSEEK_MODEL"] == "custom-chat"
+    assert os.environ["DEEPSEEK_BASE_URL"] == "https://example.test/v1"
+    assert os.environ["DEEPSEEK_API_KEY"] == "secret"
+
+
 def test_ai_chat_returns_pending_profile_state_for_unknown_model(monkeypatch) -> None:
     monkeypatch.setenv("BJT_AI_MODE", "local")
 
@@ -106,6 +129,142 @@ def test_ai_chat_returns_pending_profile_state_for_unknown_model(monkeypatch) ->
     assert result["conversation_state"]["pending_profile_fields"] == {}
     assert result["intent_debug"]["final_intent"]["action"] == "create_plan"
     assert result["intent_debug"]["final_source"] == "local"
+    assert result["orchestration"]["selected_tools"][0] == "interpret_intent"
+    assert "orchestration" in result["intent_debug"]
+    assert result["agent_steps"][0]["label"] == "工具编排"
+
+
+def test_ai_chat_can_use_tool_calling_agent_mode(monkeypatch) -> None:
+    monkeypatch.setenv("BJT_AI_MODE", "local")
+
+    status, result = call_ai_chat_handler(
+        {
+            "text": "测 S8050 beta",
+            "mode": "simulation",
+            "context": {},
+            "ai_settings": {"provider": "local", "agent_mode": "tool_calling"},
+        }
+    )
+
+    assert status == 200
+    assert result["ok"] is True
+    assert result["agent_mode"] == "tool_calling"
+    assert result["intent"] == "tool_calling"
+    assert result["plan"]["model"] == "S8050"
+    assert [item["name"] for item in result["tool_calls"]] == ["lookup_transistor", "build_test_plan"]
+    assert result["todos"] == []
+    assert result["memory"] == {"project": [], "user": []}
+
+
+def test_ai_chat_tool_calling_plan_request_does_not_run_simulation(monkeypatch) -> None:
+    monkeypatch.setenv("BJT_AI_MODE", "local")
+
+    status, result = call_ai_chat_handler(
+        {
+            "text": "给我 S8050 的测试方案",
+            "mode": "simulation",
+            "context": {},
+            "ai_settings": {"provider": "local", "agent_mode": "tool_calling"},
+        }
+    )
+
+    assert status == 200
+    assert result["ok"] is True
+    assert result["execution"] is None
+    assert result["execution_state"] == "not_started"
+    assert [item["name"] for item in result["tool_calls"]] == ["lookup_transistor", "build_test_plan"]
+    assert "测试完成" not in result["response"]
+
+
+def test_ai_chat_tool_calling_plan_update_is_proposed_then_applied(monkeypatch) -> None:
+    monkeypatch.setenv("BJT_AI_MODE", "local")
+    plan = build_test_plan(model="S8050", goal="full", depth="deep", mode="simulation")
+
+    status, first = call_ai_chat_handler(
+        {
+            "text": "细化步进点",
+            "mode": "simulation",
+            "context": {"current_plan": plan.to_dict()},
+            "ai_settings": {"provider": "local", "agent_mode": "tool_calling"},
+        }
+    )
+
+    assert status == 200
+    assert first["ok"] is True
+    assert [item["name"] for item in first["tool_calls"]] == ["propose_plan_update"]
+    assert first["execution"] is None
+    assert first["pending_plan_update"]["summary"]["vcc_points"] > len(plan.vcc_steps)
+    assert first["conversation_state"]["pending_plan_update"]["summary"]["vbb_points"] > len(plan.vbb_steps)
+    assert len(first["plan"]["vcc_steps"]) == len(plan.vcc_steps)
+
+    status, second = call_ai_chat_handler(
+        {
+            "text": "是",
+            "mode": "simulation",
+            "context": {"conversation_state": first["conversation_state"]},
+            "ai_settings": {"provider": "local", "agent_mode": "tool_calling"},
+        }
+    )
+
+    assert status == 200
+    assert second["ok"] is True
+    assert [item["name"] for item in second["tool_calls"]] == ["apply_plan_update"]
+    assert second["execution"] is None
+    assert second["pending_plan_update"] is None
+    assert second["conversation_state"]["pending_plan_update"] is None
+    assert len(second["plan"]["vcc_steps"]) > len(plan.vcc_steps)
+    assert len(second["plan"]["vbb_steps"]) > len(plan.vbb_steps)
+
+
+def test_ai_chat_tool_calling_returns_task_graph_for_complex_task(monkeypatch) -> None:
+    monkeypatch.setenv("BJT_AI_MODE", "local")
+
+    status, result = call_ai_chat_handler(
+        {
+            "text": "测 S8050 beta 并运行仿真",
+            "mode": "simulation",
+            "context": {},
+            "ai_settings": {"provider": "local", "agent_mode": "tool_calling"},
+        }
+    )
+
+    assert status == 200
+    assert result["ok"] is True
+    assert result["tool_calls"][0]["name"] == "delegate_task"
+    assert result["task_graph"]["summary"]["total"] == 5
+    assert result["task_graph"]["summary"]["completed"] == 5
+    assert result["task_graph"]["subtasks"][0]["suggested_tool"] == "lookup_transistor"
+    assert result["conversation_state"]["task_graph"]["summary"]["completed"] == 5
+
+
+def test_ai_chat_tool_calling_restores_task_graph_from_context(monkeypatch) -> None:
+    monkeypatch.setenv("BJT_AI_MODE", "local")
+    plan = build_test_plan(model="S8050", goal="beta", mode="simulation")
+
+    status, result = call_ai_chat_handler(
+        {
+            "text": "继续",
+            "mode": "simulation",
+            "context": {
+                "current_plan": plan.to_dict(),
+                "conversation_state": {
+                    "task_graph": {
+                        "subtasks": [
+                            {"id": "profile", "task_type": "profile_review", "objective": "确认器件", "status": "completed", "suggested_tool": "lookup_transistor"},
+                            {"id": "plan", "task_type": "plan_build", "objective": "生成计划", "status": "completed", "suggested_tool": "build_test_plan"},
+                            {"id": "safety", "task_type": "safety_review", "objective": "安全评审", "status": "in_progress", "suggested_tool": "evaluate_plan_safety"},
+                        ]
+                    }
+                },
+            },
+            "ai_settings": {"provider": "local", "agent_mode": "tool_calling"},
+        }
+    )
+
+    assert status == 200
+    assert result["ok"] is True
+    assert result["tool_calls"][0]["name"] == "evaluate_plan_safety"
+    assert result["task_graph"]["subtasks"][2]["status"] == "completed"
 
 
 def test_ai_chat_can_build_unknown_model_plan_from_datasheet_lookup(monkeypatch, tmp_path) -> None:

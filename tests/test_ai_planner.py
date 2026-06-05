@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from contextlib import contextmanager
 
-from ai.test_planner import infer_goal, plan_from_text
+from ai.test_planner import build_test_plan, infer_goal, plan_from_text
 from ai.transistor_db import lookup_transistor
 from ai.assistant import build_execution_stats, local_execution_summary
 from ai_cli import main
@@ -14,7 +14,15 @@ def test_lookup_known_transistor_profile() -> None:
 
     assert profile.model == "S8050"
     assert profile.bjt_type == "NPN"
-    assert profile.confidence == "catalog"
+    assert profile.confidence == "user_confirmed"
+
+
+def test_lookup_confirmed_profile_when_not_in_catalog() -> None:
+    profile = lookup_transistor("TIP120")
+
+    assert profile.model == "TIP120"
+    assert profile.bjt_type == "NPN"
+    assert profile.confidence == "user_confirmed"
 
 
 def test_plan_from_text_builds_safe_beta_plan() -> None:
@@ -27,6 +35,14 @@ def test_plan_from_text_builds_safe_beta_plan() -> None:
     assert plan.ic_limit_a <= 0.03
     assert plan.power_limit_w <= 0.30
     assert plan.static_points
+
+
+def test_default_platform_limit_allows_power_transistor_window() -> None:
+    plan = build_test_plan(model="TIP41C", goal="curves", depth="standard")
+
+    assert plan.profile["ic_max_a"] == 6.0
+    assert plan.ic_limit_a == 0.30
+    assert plan.ic_limit_a > 0.003
 
 
 def test_unknown_model_uses_conservative_fallback() -> None:

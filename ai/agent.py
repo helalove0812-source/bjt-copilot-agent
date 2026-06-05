@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
 import hashlib
 import json
@@ -16,23 +16,19 @@ from ai.action_taxonomy import (
     safety_action_items_from_blocked_reason,
     safety_action_items_from_policy,
 )
-from ai.action_recommender import recommend_actions
+from ai.agent_tools import AgentToolRegistry, default_agent_tools
 from ai.assistant import build_execution_stats, summarize_execution_with_ai, summarize_plan_with_ai
-from ai.autonomy import refine_plan_after_execution
 from ai.conversation import (
     AIConversationState,
     AIIntent,
     CandidateProfileState,
     answer_from_context,
-    apply_intent_to_plan,
-    interpret_user_message_with_debug,
 )
-from ai.rules import diagnose_context, diagnose_tags
 from ai.safety import evaluate_execution_request
 from ai.state_taxonomy import blocked_reason_item, canonical_agent_state, pick_blocked_reason, pick_execution_state
 from ai.test_planner import TestPlan, extract_model_guess
 from ai.tools import execute_plan
-from ai.transistor_db import TransistorProfile, lookup_transistor
+from ai.transistor_db import TransistorProfile
 from ai.user_profile_store import (
     DuplicateUserProfileError,
     InvalidUserProfileStoreError,
@@ -70,6 +66,7 @@ class AgentTurnResult:
     completed_action_items: list[dict] = field(default_factory=list)
     safety_action_items: list[dict] = field(default_factory=list)
     agent_steps: list[dict] = field(default_factory=list)
+    orchestration: dict = field(default_factory=dict)
     intent_debug: dict = field(default_factory=dict)
 
     def to_dict(self) -> dict:
@@ -96,8 +93,41 @@ class AgentTurnResult:
             "completed_action_items": self.completed_action_items,
             "safety_action_items": self.safety_action_items,
             "agent_steps": self.agent_steps,
+            "orchestration": self.orchestration,
             "intent_debug": self.intent_debug,
         }
+
+
+def _default_runtime_tools() -> AgentToolRegistry:
+    registry = default_agent_tools()
+
+    def _execute_plan(*args, **kwargs):
+        return execute_plan(*args, **kwargs)
+
+    def _summarize_plan(*args, **kwargs):
+        return summarize_plan_with_ai(*args, **kwargs)
+
+    def _summarize_execution(*args, **kwargs):
+        return summarize_execution_with_ai(*args, **kwargs)
+
+    def _evaluate_execution_request(*args, **kwargs):
+        return evaluate_execution_request(*args, **kwargs)
+
+    def _orchestrate_turn(*args, **kwargs):
+        return registry.orchestrate_turn(*args, **kwargs)
+
+    def _review_step(*args, **kwargs):
+        return registry.review_step(*args, **kwargs)
+
+    return replace(
+        registry,
+        orchestrate_turn=_orchestrate_turn,
+        review_step=_review_step,
+        execute_plan=_execute_plan,
+        summarize_plan=_summarize_plan,
+        summarize_execution=_summarize_execution,
+        evaluate_execution_request=_evaluate_execution_request,
+    )
 
 
 class TestAgent:
@@ -105,9 +135,16 @@ class TestAgent:
 
     __test__ = False
 
-    def __init__(self, state: AIConversationState | None = None, *, cfg: HwConfig | None = None) -> None:
+    def __init__(
+        self,
+        state: AIConversationState | None = None,
+        *,
+        cfg: HwConfig | None = None,
+        tools: AgentToolRegistry | None = None,
+    ) -> None:
         self.state = state or AIConversationState()
         self.cfg = cfg
+        self.tools = tools or _default_runtime_tools()
         self._hardware_confirmation: dict | None = None
 
     def run_turn(
@@ -120,7 +157,23 @@ class TestAgent:
         output_dir: Path | None = None,
         logs: list[str] | None = None,
     ) -> AgentTurnResult:
-        intent, used_ai, provider, usage, intent_debug = interpret_user_message_with_debug(text, self.state, default_mode=default_mode)
+        intent, used_ai, provider, usage, intent_debug = self.tools.interpret_intent(
+            text,
+            self.state,
+            default_mode=default_mode,
+        )
+        orchestration, orchestration_used_ai, orchestration_provider, orchestration_usage = self.tools.orchestrate_turn(
+            text,
+            self.state,
+            intent=intent,
+            tools=self.tools,
+            default_mode=default_mode,
+        )
+        used_ai = used_ai or orchestration_used_ai
+        provider = _merge_provider(provider, orchestration_provider if orchestration_used_ai else "")
+        usage = _merge_usage(usage, orchestration_usage)
+        orchestration_payload = orchestration.to_dict() if hasattr(orchestration, "to_dict") else dict(orchestration or {})
+        intent_debug["orchestration"] = orchestration_payload
         plan: TestPlan | None = None
         execution: dict | None = None
         execution_summary = ""
@@ -134,7 +187,38 @@ class TestAgent:
         completed_actions: list[str] = []
         safety_policy_tags: list[str] = []
         safety_policy_reasons: list[str] = []
-        agent_steps: list[dict] = [_agent_step("done", "解析意图", intent.action)]
+        step_reviews: list[dict] = []
+        agent_steps: list[dict] = [
+            _agent_step(
+                "done",
+                "LLM 工具编排" if orchestration_used_ai else "工具编排",
+                " -> ".join(orchestration_payload.get("selected_tools", [])[:5]),
+            ),
+            _agent_step("done", "解析意图", intent.action),
+        ]
+        available_tool_names = [item.name for item in self.tools.describe()]
+
+        def review_step(step: str, summary: str, data: dict | None = None) -> None:
+            nonlocal used_ai, provider, usage
+            if not orchestration_used_ai:
+                return
+            review, review_used_ai, review_provider, review_usage = self.tools.review_step(
+                step=step,
+                user_text=text,
+                state=self.state,
+                intent=intent,
+                summary=summary,
+                data=data or {},
+                available_tools=available_tool_names,
+            )
+            review_payload = review.to_dict() if hasattr(review, "to_dict") else dict(review or {})
+            step_reviews.append(review_payload)
+            if review_used_ai:
+                used_ai = True
+                provider = _merge_provider(provider, review_provider)
+                usage = _merge_usage(usage, review_usage)
+
+        review_step("intent", "意图解析为 {0}。".format(intent.action), {"intent_debug": intent_debug})
 
         if _looks_like_fake_result_request(text):
             response = (
@@ -148,6 +232,7 @@ class TestAgent:
                 action_item("suggest_simulation", reason="可用仿真或离线数据替代真实硬件结果。"),
             ]
             agent_steps.append(_agent_step("blocked", "拒绝编造测量值", "缺少真实硬件或测量数据"))
+            review_step("safety", "拒绝在缺少真实测量数据时编造结果。")
 
         elif intent.action in {"create_plan", "modify_plan"}:
             missing_profile_inputs = _missing_profile_inputs(self.state.pending_profile_fields)
@@ -166,8 +251,9 @@ class TestAgent:
                         "还需要：" + "、".join(required_inputs),
                     )
                 )
+                review_step("planning", "未知型号资料不足，等待用户补全关键额定参数。")
             elif intent.action == "modify_plan" and _looks_like_autonomous_refine(text) and self.state.current_plan and self.state.current_execution:
-                work = refine_plan_after_execution(
+                work = self.tools.refine_plan(
                     self.state.current_plan,
                     self.state.current_execution,
                     user_text=text,
@@ -191,10 +277,11 @@ class TestAgent:
                 )
                 next_actions = _plan_next_actions(plan)
                 agent_steps.append(_agent_step("done", "自主优化计划", "；".join(completed_actions)))
+                review_step("planning", "已根据执行证据自主优化当前计划。", {"plan": plan.to_dict()})
             else:
-                plan = apply_intent_to_plan(intent, self.state, cfg=self.cfg)
+                plan = self.tools.apply_intent_to_plan(intent, self.state, cfg=self.cfg)
                 _sync_candidate_profile_from_plan(self.state, plan)
-                response, summary_used_ai, summary_provider, summary_usage = summarize_plan_with_ai(plan, text)
+                response, summary_used_ai, summary_provider, summary_usage = self.tools.summarize_plan(plan, text)
                 if plan.bjt_type == "PNP":
                     response = (
                         "已识别为 PNP 型号 {0}。当前自动执行路径只开放 NPN，因为 PNP 的偏置和接线方向不同。"
@@ -207,6 +294,7 @@ class TestAgent:
                 agent_state = "plan_ready"
                 next_actions = _plan_next_actions(plan)
                 agent_steps.append(_agent_step("done", "生成测试计划", "{0} / {1}".format(plan.model, plan.goal)))
+                review_step("planning", "已生成或更新测试计划。", {"plan": plan.to_dict()})
 
         elif intent.action == "execute_simulation":
             plan = self.state.current_plan
@@ -216,15 +304,16 @@ class TestAgent:
                 required_inputs = ["晶体管型号", "测试目标"]
                 next_actions = ["生成测试计划"]
                 agent_steps.append(_agent_step("waiting", "等待测试需求", "需要型号和目标"))
+                review_step("planning", "执行前缺少可用测试计划。")
             else:
-                execution = execute_plan(plan, mode="simulation", output_dir=output_dir, allow_hardware=False)
+                execution = self.tools.execute_plan(plan, mode="simulation", output_dir=output_dir, allow_hardware=False)
                 self.state.record_execution(execution)
                 if execution.get("skipped"):
                     response = "执行已跳过：{0}".format(execution.get("reason", "未知原因"))
                     execution_summary = response
                     agent_state = "execution_skipped"
                 else:
-                    response, exec_used_ai, exec_provider, exec_usage = summarize_execution_with_ai(execution)
+                    response, exec_used_ai, exec_provider, exec_usage = self.tools.summarize_execution(execution)
                     execution_summary = response
                     used_ai = used_ai or exec_used_ai
                     provider = _merge_provider(provider, exec_provider if exec_used_ai else "")
@@ -234,12 +323,13 @@ class TestAgent:
                         response = _append_profile_save_prompt(response, plan, self.state)
                         execution_summary = response
                 self.state.current_summary = execution_summary
-                diagnosis_tags_out = diagnose_tags(
+                diagnosis_tags_out = self.tools.diagnose_tags(
                     str(execution.get("abort_reason") or execution_summary or response),
                     measurements=execution.get("measurements") or [],
                 )
                 next_actions = _execution_next_actions(execution, plan)
                 agent_steps.append(_agent_step("done", "执行仿真", agent_state))
+                review_step("execution", "已完成仿真执行并生成结果摘要。", {"execution": _compact_execution_for_review(execution)})
 
         elif intent.action == "execute_hardware":
             plan = self.state.current_plan
@@ -249,9 +339,10 @@ class TestAgent:
                 required_inputs = ["硬件测试计划"]
                 next_actions = ["生成测试计划"]
                 agent_steps.append(_agent_step("waiting", "等待硬件计划", "没有可执行计划"))
+                review_step("safety", "硬件执行前缺少可用计划。")
             else:
                 token_valid = self._hardware_confirmation_valid(plan, hardware_confirmation_token)
-                decision = evaluate_execution_request(
+                decision = self.tools.evaluate_execution_request(
                     plan=plan,
                     mode="hardware",
                     allow_hardware=allow_hardware,
@@ -267,6 +358,7 @@ class TestAgent:
                     required_inputs = ["硬件确认令牌"]
                     next_actions = ["使用一次性令牌继续硬件执行", "取消或修改当前计划"]
                     agent_steps.append(_agent_step("waiting", "等待硬件确认", "未打开真实输出"))
+                    review_step("safety", "硬件执行需要显式确认，当前未打开真实输出。", {"decision": decision.status})
                 elif decision.status == "deny":
                     safety_policy_tags = list(decision.tags)
                     safety_policy_reasons = list(decision.reasons)
@@ -279,8 +371,9 @@ class TestAgent:
                     agent_state = "execution_blocked"
                     next_actions = ["查看阻止原因", "修改计划或切换为仿真模式"]
                     agent_steps.append(_agent_step("blocked", "硬件策略检查", response))
+                    review_step("safety", response, {"decision": decision.status, "tags": list(decision.tags)})
                 else:
-                    execution = execute_plan(
+                    execution = self.tools.execute_plan(
                         plan,
                         mode="hardware",
                         output_dir=output_dir,
@@ -294,7 +387,7 @@ class TestAgent:
                         execution_summary = response
                         agent_state = "execution_skipped"
                     else:
-                        response, exec_used_ai, exec_provider, exec_usage = summarize_execution_with_ai(execution)
+                        response, exec_used_ai, exec_provider, exec_usage = self.tools.summarize_execution(execution)
                         execution_summary = response
                         used_ai = used_ai or exec_used_ai
                         provider = _merge_provider(provider, exec_provider if exec_used_ai else "")
@@ -304,12 +397,13 @@ class TestAgent:
                         response = _append_profile_save_prompt(response, plan, self.state)
                         execution_summary = response
                     self.state.current_summary = execution_summary
-                    diagnosis_tags_out = diagnose_tags(
+                    diagnosis_tags_out = self.tools.diagnose_tags(
                         str(execution.get("abort_reason") or execution_summary or response),
                         measurements=execution.get("measurements") or [],
                     )
                     next_actions = _execution_next_actions(execution, plan)
                     agent_steps.append(_agent_step("done", "执行硬件测试", agent_state))
+                    review_step("execution", "已完成确认后的硬件执行流程。", {"execution": _compact_execution_for_review(execution)})
 
         elif intent.action in {"save_profile", "update_profile"}:
             response, agent_state = _persist_candidate_profile(intent.action, self.state)
@@ -320,6 +414,7 @@ class TestAgent:
             else:
                 next_actions = ["继续补全候选规格", "检查本地型号库配置"]
                 agent_steps.append(_agent_step("blocked", "保存候选型号", response))
+            review_step("profile_library", response, {"agent_state": agent_state})
 
         elif intent.action == "manage_profile_library":
             response, agent_state, completed_actions = _handle_profile_library_command(intent, text, self.state)
@@ -330,36 +425,39 @@ class TestAgent:
             else:
                 next_actions = ["打开器件库面板查看详情", "新增或更新器件资料", "启用/禁用或删除现有记录"]
                 agent_steps.append(_agent_step("ready", "切换器件库", response))
+            review_step("profile_library", response, {"completed_actions": completed_actions})
 
         elif intent.action == "explain_result":
             current_measurements = (self.state.current_execution or {}).get("measurements") or []
             if _looks_like_diagnosis(text) or logs:
-                response = diagnose_context(
+                response = self.tools.diagnose_context(
                     text,
                     logs=logs or [],
                     measurements=current_measurements,
                 )
-                diagnosis_tags_out = diagnose_tags(text, logs=logs or [], measurements=current_measurements)
+                diagnosis_tags_out = self.tools.diagnose_tags(text, logs=logs or [], measurements=current_measurements)
             else:
                 response = answer_from_context(intent, self.state)
-                diagnosis_tags_out = diagnose_tags(text, measurements=current_measurements)
+                diagnosis_tags_out = self.tools.diagnose_tags(text, measurements=current_measurements)
             agent_state = "diagnosing"
-            next_action_items = _diagnosis_next_action_items(self.state.current_plan, diagnosis_tags_out)
+            next_action_items = _diagnosis_next_action_items(self.state.current_plan, diagnosis_tags_out, self.tools)
             next_actions = [str(item.get("label") or item.get("action") or "") for item in next_action_items]
             agent_steps.append(_agent_step("done", "分析上下文", "诊断/解释结果"))
+            review_step("diagnosis", "已分析当前上下文并生成诊断标签。", {"diagnosis_tags": diagnosis_tags_out})
 
         elif _looks_like_diagnosis(text):
             current_measurements = (self.state.current_execution or {}).get("measurements") or []
-            response = diagnose_context(
+            response = self.tools.diagnose_context(
                 text,
                 logs=logs or [],
                 measurements=current_measurements,
             )
-            diagnosis_tags_out = diagnose_tags(text, logs=logs or [], measurements=current_measurements)
+            diagnosis_tags_out = self.tools.diagnose_tags(text, logs=logs or [], measurements=current_measurements)
             agent_state = "diagnosing"
-            next_action_items = _diagnosis_next_action_items(self.state.current_plan, diagnosis_tags_out)
+            next_action_items = _diagnosis_next_action_items(self.state.current_plan, diagnosis_tags_out, self.tools)
             next_actions = [str(item.get("label") or item.get("action") or "") for item in next_action_items]
             agent_steps.append(_agent_step("done", "分析上下文", "诊断/解释结果"))
+            review_step("diagnosis", "已分析异常描述并生成诊断标签。", {"diagnosis_tags": diagnosis_tags_out})
 
         else:
             response = answer_from_context(intent, self.state)
@@ -378,6 +476,7 @@ class TestAgent:
                 required_inputs = ["晶体管型号", "测试目标"]
                 next_actions = ["生成测试计划"]
                 agent_steps.append(_agent_step("waiting", "等待测试需求", "需要型号和目标"))
+            review_step("answer", response, {"agent_state": agent_state})
 
         self.state.add("user", text)
         self.state.add("assistant", response)
@@ -407,10 +506,21 @@ class TestAgent:
         )
         next_action_items = _merge_action_items(
             next_action_items or _action_items_from_labels(next_actions),
-            _request_context_action_items(text, intent, plan),
+            _request_context_action_items(text, intent, plan, self.tools),
             _plan_context_action_items(intent, plan),
-            recommend_actions(diagnosis_tags=diagnosis_tags_out),
+            self.tools.recommend_actions(diagnosis_tags=diagnosis_tags_out),
         )
+        review_step(
+            "next_actions",
+            "已生成下一步动作和安全动作。",
+            {
+                "next_actions": next_actions,
+                "diagnosis_tags": diagnosis_tags_out,
+                "blocked_reason": blocked_reason,
+            },
+        )
+        if step_reviews:
+            orchestration_payload["step_reviews"] = step_reviews
         return AgentTurnResult(
             response=response,
             intent=intent,
@@ -437,6 +547,7 @@ class TestAgent:
             completed_action_items=_action_items_from_labels(completed_actions),
             safety_action_items=safety_action_items,
             agent_steps=agent_steps,
+            orchestration=orchestration_payload,
             intent_debug=intent_debug,
         )
 
@@ -497,6 +608,19 @@ def _agent_step(status: str, label: str, detail: str = "") -> dict:
     return {"status": status, "label": label, "detail": detail}
 
 
+def _compact_execution_for_review(execution: dict | None) -> dict:
+    if not execution:
+        return {}
+    measurements = execution.get("measurements") or []
+    return {
+        "mode": execution.get("mode"),
+        "skipped": bool(execution.get("skipped")),
+        "aborted": bool(execution.get("aborted")),
+        "reason": execution.get("reason") or execution.get("abort_reason") or "",
+        "measurement_count": len(measurements) if isinstance(measurements, list) else 0,
+    }
+
+
 def _action_items_from_labels(labels: list[str]) -> list[dict]:
     return action_items_from_labels(labels)
 
@@ -543,7 +667,12 @@ def _plan_context_action_items(intent: AIIntent, plan: TestPlan | None) -> list[
     return items
 
 
-def _request_context_action_items(text: str, intent: AIIntent, plan: TestPlan | None) -> list[dict]:
+def _request_context_action_items(
+    text: str,
+    intent: AIIntent,
+    plan: TestPlan | None,
+    tools: AgentToolRegistry,
+) -> list[dict]:
     del plan
     items: list[dict] = []
     if _looks_like_wiring_check_request(text):
@@ -553,7 +682,7 @@ def _request_context_action_items(text: str, intent: AIIntent, plan: TestPlan | 
         items.append(action_item("require_confirmation", reason="用户请求自动或直接执行，真实硬件前必须显式确认。"))
         items.append(action_item("show_plan_summary", reason="执行前应先展示计划、限值、测试点和风险摘要。"))
         model = intent.model or extract_model_guess(text)
-        if model != "UNKNOWN" and lookup_transistor(model).bjt_type == "PNP":
+        if model != "UNKNOWN" and tools.lookup_transistor(model).bjt_type == "PNP":
             items.append(action_item("verify_polarity", reason="PNP 型号需要额外确认极性、偏置方向和夹具接线。"))
     return items
 
@@ -616,8 +745,12 @@ def _diagnosis_next_actions(plan: TestPlan | None) -> list[str]:
     return actions
 
 
-def _diagnosis_next_action_items(plan: TestPlan | None, diagnosis_tags: list[str]) -> list[dict]:
-    recommended = recommend_actions(diagnosis_tags=diagnosis_tags)
+def _diagnosis_next_action_items(
+    plan: TestPlan | None,
+    diagnosis_tags: list[str],
+    tools: AgentToolRegistry,
+) -> list[dict]:
+    recommended = tools.recommend_actions(diagnosis_tags=diagnosis_tags)
     fallback = _action_items_from_labels(_diagnosis_next_actions(plan))
     merged: list[dict] = []
     seen: set[str] = set()
@@ -630,7 +763,12 @@ def _diagnosis_next_action_items(plan: TestPlan | None, diagnosis_tags: list[str
 
 
 def _merge_provider(primary: str, secondary: str) -> str:
-    values = [value for value in (primary, secondary) if value and value != "local"]
+    values = [
+        part.strip()
+        for value in (primary, secondary)
+        for part in str(value or "").split(",")
+        if part.strip() and part.strip() != "local"
+    ]
     if not values:
         return primary or secondary or "local"
     deduped: list[str] = []

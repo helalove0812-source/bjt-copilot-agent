@@ -15,7 +15,7 @@ class HwConfig:
     R_B: float = 22e3
     R_C: float = 220.0
     Vbe_typ: float = 0.7
-    Ic_max_A: float = 30e-3
+    Ic_max_A: float = 0.30
     Pmax_W: float = 0.30
     Vcc_max: float = 5.0
     lin_ic_lo_A: float = 0.5e-3

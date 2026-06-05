@@ -154,6 +154,8 @@ def lookup_transistor(model: str) -> TransistorProfile:
         record = None
     except RuntimeError:
         record = None
+    if record and key in _PROFILES and str(record.get("confidence") or "") == "needs_user_datasheet_confirmation":
+        return _PROFILES[key]
     if record and bool(record.get("enabled", True)):
         return TransistorProfile(
             model=str(record.get("model") or model.strip() or "UNKNOWN"),

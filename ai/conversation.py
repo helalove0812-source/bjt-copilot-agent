@@ -11,6 +11,7 @@ from core.types import HwConfig
 
 from ai.assistant import local_execution_summary, build_execution_stats
 from ai.llm_client import LLMUnavailable, chat_text
+from ai.prompt_layers import PromptLayers, make_volatile
 from ai.rules import extract_profile_fields, infer_rule_decision
 from ai.test_planner import TestDepth, TestGoal, TestPlan, build_test_plan, extract_model_guess, infer_depth, infer_goal
 from ai.transistor_db import TransistorProfile, build_profile_from_fields, lookup_transistor
@@ -53,6 +54,7 @@ class AIConversationState:
     pending_profile_model: str | None = None
     pending_profile_fields: dict[str, float | str] = field(default_factory=dict)
     pending_library_action: dict[str, object] | None = None
+    pending_plan_update: dict[str, object] | None = None
 
     def __post_init__(self) -> None:
         self.sync_candidate_profile()
@@ -118,6 +120,7 @@ class AIConversationState:
             "pending_profile_model": self.pending_profile_model,
             "pending_profile_fields": self.pending_profile_fields,
             "pending_library_action": dict(self.pending_library_action) if self.pending_library_action else None,
+            "pending_plan_update": dict(self.pending_plan_update) if self.pending_plan_update else None,
         }
 
 
@@ -170,46 +173,9 @@ def interpret_user_message_with_debug(
     if ai_mode == "local":
         return local_intent, False, "local", {}, debug
 
-    prompt = json.dumps(
-        {
-            "user_message": text,
-            "default_mode": default_mode,
-            "context": state.to_context(),
-            "allowed_actions": [
-                "create_plan",
-                "modify_plan",
-                "execute_simulation",
-                "execute_hardware",
-                "explain_result",
-                "manage_profile_library",
-                "save_profile",
-                "update_profile",
-                "answer",
-            ],
-            "schema": {
-                "action": "one allowed action",
-                "model": "optional transistor model like S8050",
-                "goal": "optional: auto/beta/vce_sat/curves/screening/full",
-                "depth": "optional: conservative/standard/deep",
-                "mode": "optional: simulation/hardware",
-                "ic_limit_a": "optional numeric current limit in ampere",
-                "power_limit_w": "optional numeric power limit in watt",
-                "vcc_max": "optional numeric maximum Vcc in volt",
-                "vbb_points": "optional integer number of Vbb static points",
-                "library_patch": "optional dict for profile library updates",
-                "response": "short Chinese explanation of what you decided",
-            },
-        },
-        ensure_ascii=False,
-        indent=2,
-    )
-    instructions = """你是 BJT 测试系统的上下文意图解析器。
-你必须根据用户消息和历史上下文判断下一步动作，并只输出 JSON 对象，不要输出 Markdown。
-如果用户在说“保守一点、Ic 不超过 10mA、Vcc 最高 3V、多测几个点、解释刚才结果、重新执行”等，要引用当前计划或当前执行结果。
-如果用户说“安全限制不要那么死、放宽一点、别太保守、限制松一点”，应理解为在本地 SafetyGuard 和硬件上限内适度放宽计划，通常 action=modify_plan、depth=standard，并给出更高但仍保守的 ic_limit_a/power_limit_w。
-不要发明硬件能力，不要要求超过安全限制。"""
+    layers = _intent_prompt_layers(text=text, state=state, default_mode=default_mode)
     try:
-        result = chat_text(system_text=instructions, user_text=prompt)
+        result = chat_text(system_text=layers.system_text(), user_text=layers.user_text())
         data = _parse_json_object(result.text)
         llm_intent = _intent_from_mapping(data, text, state, default_mode)
         final_intent, final_source, fallback_reason = _choose_final_intent(local_intent, llm_intent)
@@ -228,6 +194,53 @@ def interpret_user_message_with_debug(
         debug["local_intent"] = _intent_to_mapping(fallback_intent)
         debug["final_intent"] = _intent_to_mapping(fallback_intent)
         return fallback_intent, False, "local", {}, debug
+
+
+def _intent_prompt_layers(text: str, state: AIConversationState, default_mode: str) -> PromptLayers:
+    allowed_actions = [
+        "create_plan",
+        "modify_plan",
+        "execute_simulation",
+        "execute_hardware",
+        "explain_result",
+        "manage_profile_library",
+        "save_profile",
+        "update_profile",
+        "answer",
+    ]
+    return PromptLayers(
+        stable={
+            "identity": "BJT 测试系统的上下文意图解析器",
+            "protocol": [
+                "根据用户消息和历史上下文判断下一步动作。",
+                "只输出 JSON 对象，不要输出 Markdown。",
+            ],
+            "safety_policy": [
+                "不要发明硬件能力，不要要求超过安全限制。",
+                "如果用户说安全限制不要那么死、放宽一点、别太保守、限制松一点，应理解为在本地 SafetyGuard 和硬件上限内适度放宽计划。",
+                "LLM 不能单方面升级为 execute_hardware；真实硬件执行必须被本地规则同意。",
+            ],
+            "schema": {
+                "action": "one allowed action",
+                "model": "optional transistor model like S8050",
+                "goal": "optional: auto/beta/vce_sat/curves/screening/full",
+                "depth": "optional: conservative/standard/deep",
+                "mode": "optional: simulation/hardware",
+                "ic_limit_a": "optional numeric current limit in ampere",
+                "power_limit_w": "optional numeric power limit in watt",
+                "vcc_max": "optional numeric maximum Vcc in volt",
+                "vbb_points": "optional integer number of Vbb static points",
+                "library_patch": "optional dict for profile library updates",
+                "response": "short Chinese explanation of what you decided",
+            },
+            "allowed_actions": allowed_actions,
+        },
+        context={
+            "conversation_state": state.to_context(),
+            "default_mode": default_mode,
+        },
+        volatile=make_volatile(user_message=text),
+    )
 
 
 def _choose_final_intent(local_intent: AIIntent, llm_intent: AIIntent) -> tuple[AIIntent, str, str]:

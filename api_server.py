@@ -20,6 +20,7 @@ from ai.action_taxonomy import (
     safety_action_items_from_blocked_reason,
     safety_action_items_from_labels,
 )
+from ai.agent_tools import default_agent_tools
 from ai.assistant import summarize_plan_with_ai
 from ai.autonomy import refine_plan_after_execution
 from ai.conversation import (
@@ -34,6 +35,7 @@ from ai.rules import diagnose_context
 from ai.safety import evaluate_execution_request
 from ai.state_taxonomy import blocked_reason_item
 from ai.test_planner import TestPlan, plan_from_text
+from ai.tool_call_agent import ToolCallingAgent
 from ai.tools import execute_plan, preflight_plan
 from ai.user_profile_store import (
     DuplicateUserProfileError,
@@ -66,7 +68,7 @@ def _hw_config(data: dict) -> HwConfig:
     return HwConfig(
         R_B=_num(hw.get("R_B"), 22e3),
         R_C=_num(hw.get("R_C"), 220.0),
-        Ic_max_A=_num(hw.get("Ic_max_A"), 30e-3),
+        Ic_max_A=_num(hw.get("Ic_max_A"), 0.30),
         Pmax_W=_num(hw.get("Pmax_W"), 0.30),
         lin_ic_lo_A=_range(hw.get("lin_ic_range"), (0.5e-3, 20e-3))[0],
         lin_ic_hi_A=_range(hw.get("lin_ic_range"), (0.5e-3, 20e-3))[1],
@@ -166,6 +168,7 @@ def _apply_ai_settings(payload: dict) -> None:
     provider = str(settings.get("provider") or "local")
     model = str(settings.get("model") or "").strip()
     api_key = str(settings.get("api_key") or "").strip()
+    base_url = str(settings.get("base_url") or "").strip()
     if provider == "local":
         os.environ["BJT_AI_MODE"] = "local"
         return
@@ -176,11 +179,21 @@ def _apply_ai_settings(payload: dict) -> None:
             os.environ["DEEPSEEK_MODEL"] = model
         if api_key:
             os.environ["DEEPSEEK_API_KEY"] = api_key
+        if base_url:
+            os.environ["DEEPSEEK_BASE_URL"] = base_url
     elif provider == "openai":
         if model:
             os.environ["OPENAI_MODEL"] = model
         if api_key:
             os.environ["OPENAI_API_KEY"] = api_key
+        if base_url:
+            os.environ["OPENAI_BASE_URL"] = base_url
+
+
+def _agent_mode_from_payload(payload: dict) -> str:
+    settings = payload.get("ai_settings") if isinstance(payload.get("ai_settings"), dict) else {}
+    mode = str(payload.get("agent_mode") or settings.get("agent_mode") or "").strip().lower()
+    return mode if mode in {"tool_calling", "classic"} else "classic"
 
 
 def _execution_from_context(context: dict) -> dict | None:
@@ -253,6 +266,9 @@ def _state_from_context(context: dict) -> AIConversationState:
     pending_library_action = context.get("pending_library_action")
     if isinstance(pending_library_action, dict):
         state.pending_library_action = dict(pending_library_action)
+    pending_plan_update = context.get("pending_plan_update")
+    if isinstance(pending_plan_update, dict):
+        state.pending_plan_update = dict(pending_plan_update)
     plan = context.get("current_plan")
     if isinstance(plan, dict):
         try:
@@ -296,6 +312,7 @@ def _context_from_state(state: AIConversationState) -> dict:
         "pending_profile_model": state.pending_profile_model,
         "pending_profile_fields": dict(state.pending_profile_fields),
         "pending_library_action": dict(state.pending_library_action) if state.pending_library_action else None,
+        "pending_plan_update": dict(state.pending_plan_update) if state.pending_plan_update else None,
     }
 
 
@@ -428,6 +445,32 @@ def _should_lookup_datasheet(payload: dict, provider: str, intent_action: str) -
     if "datasheet_lookup" in payload:
         return bool(payload.get("datasheet_lookup"))
     return provider != "local"
+
+
+def _merge_provider(primary: str, secondary: str) -> str:
+    values = [
+        part.strip()
+        for value in (primary, secondary)
+        for part in str(value or "").split(",")
+        if part.strip() and part.strip() != "local"
+    ]
+    if not values:
+        return primary or secondary or "local"
+    deduped: list[str] = []
+    for value in values:
+        if value not in deduped:
+            deduped.append(value)
+    return ",".join(deduped)
+
+
+def _merge_usage(primary: dict | None, secondary: dict | None) -> dict:
+    merged: dict = dict(primary or {})
+    for key, value in (secondary or {}).items():
+        if isinstance(value, (int, float)) and isinstance(merged.get(key), (int, float)):
+            merged[key] += value
+        elif key not in merged:
+            merged[key] = value
+    return merged
 
 
 def _execution_agent_view(result: dict) -> dict:
@@ -989,7 +1032,74 @@ class ApiHandler(BaseHTTPRequestHandler):
             context = payload.get("context") if isinstance(payload.get("context"), dict) else {}
             config = payload.get("config") if isinstance(payload.get("config"), dict) else {}
             state = _state_from_context(context)
+            if _agent_mode_from_payload(payload) == "tool_calling":
+                agent = ToolCallingAgent(cfg=_hw_config(config), output_dir=Path("analysis_out/web"), context=context)
+                result = agent.run_turn(text, mode=mode if mode in {"simulation", "hardware"} else "simulation")
+                payload_out = result.to_dict()
+                next_context = _context_from_state(state)
+                next_context["task_graph"] = payload_out.get("task_graph")
+                next_context["current_plan"] = payload_out.get("plan")
+                next_context["pending_plan_update"] = payload_out.get("pending_plan_update")
+                self._send_json(
+                    200,
+                    {
+                        "ok": True,
+                        "intent": "tool_calling",
+                        "conversation_state": next_context,
+                        "agent_steps": [
+                            _agent_step("done", "工具调用", item.get("name", ""))
+                            for item in payload_out.get("tool_calls", [])
+                        ],
+                        "next_action_items": action_items_from_labels(payload_out.get("next_actions", [])),
+                        "completed_action_items": [],
+                        "safety_action_items": [],
+                        "required_inputs": [],
+                        "diagnosis_tags": [],
+                        "blocked_reason": "",
+                        "blocked_reason_item": blocked_reason_item(""),
+                        "execution_state": "complete" if payload_out.get("execution") else "not_started",
+                        **payload_out,
+                    },
+                )
+                return
             intent, used_ai, provider, usage, intent_debug = interpret_user_message_with_debug(text, state, default_mode=mode)
+            agent_tools = default_agent_tools()
+            orchestration, orchestration_used_ai, orchestration_provider, orchestration_usage = agent_tools.orchestrate_turn(
+                text,
+                state,
+                intent=intent,
+                tools=agent_tools,
+                default_mode=mode,
+            )
+            used_ai = used_ai or orchestration_used_ai
+            provider = _merge_provider(provider, orchestration_provider if orchestration_used_ai else "")
+            usage = _merge_usage(usage, orchestration_usage)
+            orchestration_payload = orchestration.to_dict() if hasattr(orchestration, "to_dict") else dict(orchestration or {})
+            intent_debug["orchestration"] = orchestration_payload
+            step_reviews: list[dict] = []
+            available_tool_names = [item.name for item in agent_tools.describe()]
+
+            def review_step(step: str, summary: str, data: dict | None = None) -> None:
+                nonlocal used_ai, provider, usage
+                if not orchestration_used_ai:
+                    return
+                review, review_used_ai, review_provider, review_usage = agent_tools.review_step(
+                    step=step,
+                    user_text=text,
+                    state=state,
+                    intent=intent,
+                    summary=summary,
+                    data=data or {},
+                    available_tools=available_tool_names,
+                )
+                review_payload = review.to_dict() if hasattr(review, "to_dict") else dict(review or {})
+                step_reviews.append(review_payload)
+                if review_used_ai:
+                    used_ai = True
+                    provider = _merge_provider(provider, review_provider)
+                    usage = _merge_usage(usage, review_usage)
+
+            review_step("intent", "意图解析为 {0}。".format(intent.action), {"intent_debug": intent_debug})
             plan = None
             datasheet_lookup = None
             completed_actions: list[str] = []
@@ -1004,8 +1114,8 @@ class ApiHandler(BaseHTTPRequestHandler):
                             profile_override = datasheet_lookup.profile
                             used_ai = used_ai or datasheet_lookup.used_llm_api
                             if datasheet_lookup.used_llm_api:
-                                provider = datasheet_lookup.llm_provider or provider
-                                usage = datasheet_lookup.llm_usage or usage
+                                provider = _merge_provider(provider, datasheet_lookup.llm_provider)
+                                usage = _merge_usage(usage, datasheet_lookup.llm_usage)
                     if profile_override is not None:
                         plan = apply_intent_to_plan(intent, state, cfg=_hw_config(config), profile_override=profile_override)
                         state.current_plan = plan
@@ -1017,11 +1127,13 @@ class ApiHandler(BaseHTTPRequestHandler):
                             completed_actions.append(imported_action)
                         summary, summary_used_ai, summary_provider, summary_usage = summarize_plan_with_ai(plan, text)
                         used_ai = used_ai or summary_used_ai
-                        provider = summary_provider if summary_used_ai else provider
-                        usage = summary_usage or usage
+                        provider = _merge_provider(provider, summary_provider if summary_used_ai else "")
+                        usage = _merge_usage(usage, summary_usage)
                         response = summary if not datasheet_import_note else f"{summary}\n\n{datasheet_import_note}"
+                        review_step("planning", "已根据 datasheet 资料生成测试计划。", {"plan": plan.to_dict()})
                     else:
                         response = answer_from_context(intent, state)
+                        review_step("planning", "未知型号资料不足，等待补全或 datasheet 结果。")
                 elif intent.action == "modify_plan" and _looks_like_autonomous_refine(text) and state.current_plan and state.current_execution:
                     work = refine_plan_after_execution(
                         state.current_plan,
@@ -1043,8 +1155,9 @@ class ApiHandler(BaseHTTPRequestHandler):
                     )
                     agent_state_override = "plan_refined"
                     used_ai = used_ai or work.used_ai_api
-                    provider = work.llm_provider if work.used_ai_api else provider
-                    usage = work.llm_usage or usage
+                    provider = _merge_provider(provider, work.llm_provider if work.used_ai_api else "")
+                    usage = _merge_usage(usage, work.llm_usage)
+                    review_step("planning", "已根据执行证据自主优化当前计划。", {"plan": plan.to_dict()})
                 else:
                     profile_override = None
                     model_for_lookup = intent.model or (state.current_plan.model if state.current_plan else "")
@@ -1054,8 +1167,8 @@ class ApiHandler(BaseHTTPRequestHandler):
                             profile_override = datasheet_lookup.profile
                             used_ai = used_ai or datasheet_lookup.used_llm_api
                             if datasheet_lookup.used_llm_api:
-                                provider = datasheet_lookup.llm_provider or provider
-                                usage = datasheet_lookup.llm_usage or usage
+                                provider = _merge_provider(provider, datasheet_lookup.llm_provider)
+                                usage = _merge_usage(usage, datasheet_lookup.llm_usage)
                     plan = apply_intent_to_plan(intent, state, cfg=_hw_config(config), profile_override=profile_override)
                     state.current_plan = plan
                     imported_action, datasheet_import_note = _auto_import_datasheet_profile(
@@ -1066,21 +1179,26 @@ class ApiHandler(BaseHTTPRequestHandler):
                         completed_actions.append(imported_action)
                     summary, summary_used_ai, summary_provider, summary_usage = summarize_plan_with_ai(plan, text)
                     used_ai = used_ai or summary_used_ai
-                    provider = summary_provider if summary_used_ai else provider
-                    usage = summary_usage or usage
+                    provider = _merge_provider(provider, summary_provider if summary_used_ai else "")
+                    usage = _merge_usage(usage, summary_usage)
                     response = summary if not datasheet_import_note else f"{summary}\n\n{datasheet_import_note}"
+                    review_step("planning", "已生成或更新测试计划。", {"plan": plan.to_dict()})
             elif intent.action in {"execute_simulation", "execute_hardware"}:
                 response = "我已理解为执行请求。请使用左侧或测试点模块的执行按钮触发；硬件执行仍需要本地确认和 SafetyGuard。"
+                review_step("safety", response, {"intent": intent.action})
             elif intent.action == "manage_profile_library":
                 response, completed_actions = _handle_manage_profile_library(
                     state,
                     intent,
                     self._user_profile_store_path(),
                 )
+                review_step("profile_library", response, {"completed_actions": completed_actions})
             elif any(word in text for word in ("诊断", "异常", "接反", "开路", "短路", "为什么", "不对")):
                 response = _diagnose_locally(text, context, state)
+                review_step("diagnosis", "已根据用户描述和上下文生成诊断说明。")
             else:
                 response = answer_from_context(intent, state)
+                review_step("answer", response)
             agent_view = _chat_agent_view(intent.action, state, plan)
             if agent_state_override:
                 agent_view["agent_state"] = agent_state_override
@@ -1090,9 +1208,24 @@ class ApiHandler(BaseHTTPRequestHandler):
                 )
             else:
                 agent_view["completed_actions"] = completed_actions
+            agent_view["agent_steps"].insert(
+                0,
+                _agent_step(
+                    "done",
+                    "LLM 工具编排" if orchestration_used_ai else "工具编排",
+                    " -> ".join(orchestration_payload.get("selected_tools", [])[:5]),
+                ),
+            )
             agent_view["next_action_items"] = action_items_from_labels(agent_view.get("next_actions", []))
             agent_view["completed_action_items"] = action_items_from_labels(completed_actions)
             agent_view["safety_action_items"] = safety_action_items_from_labels(agent_view.get("next_actions", []))
+            review_step(
+                "next_actions",
+                "已生成下一步动作和安全动作。",
+                {"next_actions": agent_view.get("next_actions", [])},
+            )
+            if step_reviews:
+                orchestration_payload["step_reviews"] = step_reviews
             self._send_json(
                 200,
                 {
@@ -1103,6 +1236,7 @@ class ApiHandler(BaseHTTPRequestHandler):
                     "llm_provider": provider,
                     "llm_usage": usage,
                     "intent_debug": intent_debug,
+                    "orchestration": orchestration_payload,
                     "datasheet_lookup": datasheet_lookup.to_dict() if datasheet_lookup else None,
                     "plan": plan.to_dict() if plan else None,
                     "conversation_state": _context_from_state(state),

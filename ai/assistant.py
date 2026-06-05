@@ -40,6 +40,7 @@ def local_plan_summary(plan: TestPlan) -> str:
     summary = (
         "已生成 {model} 的 {goal} 测试计划：管型 {bjt_type}，模式 {mode}，"
         "Vcc 扫描 {vcc_start:.2f}-{vcc_stop:.2f} V，Vbb 扫描 {vbb_start:.2f}-{vbb_stop:.2f} V，"
+        "Vcc {vcc_count} 点，Vbb {vbb_count} 点，共 {scan_count} 个扫描组合，"
         "电流限制 {ic_ma:.1f} mA，功耗限制 {power_mw:.0f} mW。"
     ).format(
         model=plan.model,
@@ -50,6 +51,9 @@ def local_plan_summary(plan: TestPlan) -> str:
         vcc_stop=max(plan.vcc_steps),
         vbb_start=min(plan.vbb_steps),
         vbb_stop=max(plan.vbb_steps),
+        vcc_count=len(plan.vcc_steps),
+        vbb_count=len(plan.vbb_steps),
+        scan_count=len(plan.vcc_steps) * len(plan.vbb_steps),
         ic_ma=plan.ic_limit_a * 1000.0,
         power_mw=plan.power_limit_w * 1000.0,
     )

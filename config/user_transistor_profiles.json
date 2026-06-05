@@ -1,1 +1,3802 @@
-{}
+{
+  "2N2222A": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用开关/放大 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      75,
+      300
+    ],
+    "ic_max_a": 0.8,
+    "model": "2N2222A",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.5,
+    "package": "TO-18",
+    "pinout_hint": "常见 TO-18 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 40.0
+  },
+  "2N2907A": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用开关/放大 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      100,
+      300
+    ],
+    "ic_max_a": 0.6,
+    "model": "2N2907A",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.4,
+    "package": "TO-18",
+    "pinout_hint": "常见 TO-18 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 60.0
+  },
+  "2N3055": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "经典 NPN 功率三极管",
+    "enabled": true,
+    "hfe_typical": [
+      20,
+      70
+    ],
+    "ic_max_a": 15.0,
+    "model": "2N3055",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 115.0,
+    "package": "TO-3",
+    "pinout_hint": "常见 TO-3 金属壳/外壳为 C，两个引脚为 B/E；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 60.0
+  },
+  "2N3565": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用/高速小信号 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      40,
+      250
+    ],
+    "ic_max_a": 0.2,
+    "model": "2N3565",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.36,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 40.0
+  },
+  "2N3643": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用小信号 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      60,
+      300
+    ],
+    "ic_max_a": 0.5,
+    "model": "2N3643",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.625,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 30.0
+  },
+  "2N3644": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用小信号 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      60,
+      300
+    ],
+    "ic_max_a": 0.5,
+    "model": "2N3644",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.625,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 30.0
+  },
+  "2N3702": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用小信号 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      100,
+      300
+    ],
+    "ic_max_a": 0.8,
+    "model": "2N3702",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.625,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 40.0
+  },
+  "2N3704": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用小信号 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      100,
+      300
+    ],
+    "ic_max_a": 0.8,
+    "model": "2N3704",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.625,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 40.0
+  },
+  "2N3903": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用小信号 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      50,
+      150
+    ],
+    "ic_max_a": 0.2,
+    "model": "2N3903",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.625,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 40.0
+  },
+  "2N3904": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用小信号 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      100,
+      300
+    ],
+    "ic_max_a": 0.2,
+    "model": "2N3904",
+    "notes": "填写 datasheet 厂商/链接/版本",
+    "p_tot_w": 0.625,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 正面朝向时为 E-B-C，不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 40.0
+  },
+  "2N3906": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用小信号 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      100,
+      300
+    ],
+    "ic_max_a": 0.2,
+    "model": "2N3906",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.625,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 40.0
+  },
+  "2N4123": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用小信号 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      50,
+      150
+    ],
+    "ic_max_a": 0.2,
+    "model": "2N4123",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.625,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 30.0
+  },
+  "2N4124": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用高增益 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      120,
+      360
+    ],
+    "ic_max_a": 0.2,
+    "model": "2N4124",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.625,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 25.0
+  },
+  "2N4125": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用小信号 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      50,
+      150
+    ],
+    "ic_max_a": 0.2,
+    "model": "2N4125",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.625,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 30.0
+  },
+  "2N4126": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用高增益 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      120,
+      360
+    ],
+    "ic_max_a": 0.2,
+    "model": "2N4126",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.625,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 25.0
+  },
+  "2N4401": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用小信号 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      100,
+      300
+    ],
+    "ic_max_a": 0.6,
+    "model": "2N4401",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.625,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 40.0
+  },
+  "2N4403": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用小信号 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      100,
+      300
+    ],
+    "ic_max_a": 0.6,
+    "model": "2N4403",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.625,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 40.0
+  },
+  "2N5087": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "低噪声高增益 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      250,
+      800
+    ],
+    "ic_max_a": 0.05,
+    "model": "2N5087",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.625,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 50.0
+  },
+  "2N5088": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "低噪声高增益 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      300,
+      900
+    ],
+    "ic_max_a": 0.05,
+    "model": "2N5088",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.625,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 30.0
+  },
+  "2N5089": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "低噪声超高增益 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      400,
+      1200
+    ],
+    "ic_max_a": 0.05,
+    "model": "2N5089",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.625,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 25.0
+  },
+  "2N5210": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "低噪声高增益 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      250,
+      900
+    ],
+    "ic_max_a": 0.05,
+    "model": "2N5210",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.625,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 50.0
+  },
+  "2N5401": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "高耐压小信号 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      50,
+      240
+    ],
+    "ic_max_a": 0.6,
+    "model": "2N5401",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.625,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 150.0
+  },
+  "2N5551": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "高耐压小信号 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      80,
+      250
+    ],
+    "ic_max_a": 0.6,
+    "model": "2N5551",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.625,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 160.0
+  },
+  "2SA1013": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "中高压小信号 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      60,
+      320
+    ],
+    "ic_max_a": 1.0,
+    "model": "2SA1013",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.9,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 160.0
+  },
+  "2SA1015": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "低噪声音频/通用 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      70,
+      700
+    ],
+    "ic_max_a": 0.15,
+    "model": "2SA1015",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.4,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 50.0
+  },
+  "2SA1020": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "音频驱动/中功率 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      70,
+      240
+    ],
+    "ic_max_a": 2.0,
+    "model": "2SA1020",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.9,
+    "package": "TO-92L",
+    "pinout_hint": "常见 TO-92L 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 50.0
+  },
+  "2SA1037": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD 通用小信号 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      120,
+      560
+    ],
+    "ic_max_a": 0.15,
+    "model": "2SA1037",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.2,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 50.0
+  },
+  "2SA1302": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "音频功放输出 PNP 功率三极管",
+    "enabled": true,
+    "hfe_typical": [
+      55,
+      160
+    ],
+    "ic_max_a": 15.0,
+    "model": "2SA1302",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 150.0,
+    "package": "TO-3P",
+    "pinout_hint": "常见 TO-3P 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 160.0
+  },
+  "2SA1837": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "音频驱动高压 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      80,
+      240
+    ],
+    "ic_max_a": 1.0,
+    "model": "2SA1837",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 20.0,
+    "package": "TO-126",
+    "pinout_hint": "常见 TO-126 正面朝向时为 B-C-E，散热片/背板通常接 C；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 230.0
+  },
+  "2SA1943": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "音频功放输出 PNP 功率三极管",
+    "enabled": true,
+    "hfe_typical": [
+      55,
+      160
+    ],
+    "ic_max_a": 15.0,
+    "model": "2SA1943",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 150.0,
+    "package": "TO-264",
+    "pinout_hint": "常见 TO-264 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 230.0
+  },
+  "2SA733": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "常用音频/通用小信号 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      70,
+      700
+    ],
+    "ic_max_a": 0.15,
+    "model": "2SA733",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.4,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 50.0
+  },
+  "2SA970": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "低噪声音频小信号 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      200,
+      700
+    ],
+    "ic_max_a": 0.1,
+    "model": "2SA970",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.3,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 120.0
+  },
+  "2SB647": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "中电流开关/驱动 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      60,
+      320
+    ],
+    "ic_max_a": 1.0,
+    "model": "2SB647",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.9,
+    "package": "TO-92L",
+    "pinout_hint": "常见 TO-92L 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 80.0
+  },
+  "2SB649": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "音频驱动/中功率 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      60,
+      320
+    ],
+    "ic_max_a": 1.5,
+    "model": "2SB649",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 20.0,
+    "package": "TO-126",
+    "pinout_hint": "常见 TO-126 正面朝向时为 B-C-E，散热片/背板通常接 C；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 120.0
+  },
+  "2SB772": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "低压中功率 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      60,
+      400
+    ],
+    "ic_max_a": 3.0,
+    "model": "2SB772",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 10.0,
+    "package": "TO-126",
+    "pinout_hint": "常见 TO-126 正面朝向时为 B-C-E，散热片/背板通常接 C；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 30.0
+  },
+  "2SC1815": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "低噪声音频/通用 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      70,
+      700
+    ],
+    "ic_max_a": 0.15,
+    "model": "2SC1815",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.4,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 50.0
+  },
+  "2SC2240": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "低噪声音频小信号 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      200,
+      700
+    ],
+    "ic_max_a": 0.1,
+    "model": "2SC2240",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.3,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 120.0
+  },
+  "2SC2383": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "中高压小信号 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      60,
+      320
+    ],
+    "ic_max_a": 1.0,
+    "model": "2SC2383",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.9,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 160.0
+  },
+  "2SC2412": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD 通用小信号 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      120,
+      560
+    ],
+    "ic_max_a": 0.15,
+    "model": "2SC2412",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.2,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 50.0
+  },
+  "2SC2655": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "音频驱动/中功率 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      70,
+      240
+    ],
+    "ic_max_a": 2.0,
+    "model": "2SC2655",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.9,
+    "package": "TO-92L",
+    "pinout_hint": "常见 TO-92L 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 50.0
+  },
+  "2SC3281": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "音频功放输出 NPN 功率三极管",
+    "enabled": true,
+    "hfe_typical": [
+      55,
+      160
+    ],
+    "ic_max_a": 15.0,
+    "model": "2SC3281",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 150.0,
+    "package": "TO-3P",
+    "pinout_hint": "常见 TO-3P 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 160.0
+  },
+  "2SC3356": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "射频低噪声 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      50,
+      200
+    ],
+    "ic_max_a": 0.1,
+    "model": "2SC3356",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.2,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 12.0
+  },
+  "2SC4793": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "音频驱动高压 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      80,
+      240
+    ],
+    "ic_max_a": 1.0,
+    "model": "2SC4793",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 20.0,
+    "package": "TO-126",
+    "pinout_hint": "常见 TO-126 正面朝向时为 B-C-E，散热片/背板通常接 C；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 230.0
+  },
+  "2SC5200": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "音频功放输出 NPN 功率三极管",
+    "enabled": true,
+    "hfe_typical": [
+      55,
+      160
+    ],
+    "ic_max_a": 15.0,
+    "model": "2SC5200",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 150.0,
+    "package": "TO-264",
+    "pinout_hint": "常见 TO-264 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 230.0
+  },
+  "2SC945": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "常用音频/通用小信号 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      70,
+      700
+    ],
+    "ic_max_a": 0.15,
+    "model": "2SC945",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.4,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 50.0
+  },
+  "2SD669": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "音频驱动/中功率 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      60,
+      320
+    ],
+    "ic_max_a": 1.5,
+    "model": "2SD669",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 20.0,
+    "package": "TO-126",
+    "pinout_hint": "常见 TO-126 正面朝向时为 B-C-E，散热片/背板通常接 C；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 120.0
+  },
+  "2SD882": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "低压中功率 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      60,
+      400
+    ],
+    "ic_max_a": 3.0,
+    "model": "2SD882",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 10.0,
+    "package": "TO-126",
+    "pinout_hint": "常见 TO-126 正面朝向时为 B-C-E，散热片/背板通常接 C；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 30.0
+  },
+  "2SD965": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "中电流开关/驱动 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      100,
+      320
+    ],
+    "ic_max_a": 5.0,
+    "model": "2SD965",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 20.0,
+    "package": "TO-126",
+    "pinout_hint": "常见 TO-126 正面朝向时为 B-C-E，散热片/背板通常接 C；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 40.0
+  },
+  "A733": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "常用音频/通用小信号 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      70,
+      700
+    ],
+    "ic_max_a": 0.15,
+    "model": "A733",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.4,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 50.0
+  },
+  "B772": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "低压中功率 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      60,
+      400
+    ],
+    "ic_max_a": 3.0,
+    "model": "B772",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 10.0,
+    "package": "TO-126",
+    "pinout_hint": "常见 TO-126 正面朝向时为 B-C-E，散热片/背板通常接 C；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 30.0
+  },
+  "BC327": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用中电流 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      100,
+      630
+    ],
+    "ic_max_a": 0.8,
+    "model": "BC327",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.625,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 45.0
+  },
+  "BC327-16": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用中电流 PNP 三极管 16 档",
+    "enabled": true,
+    "hfe_typical": [
+      100,
+      250
+    ],
+    "ic_max_a": 0.8,
+    "model": "BC327-16",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.625,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 45.0
+  },
+  "BC327-25": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用中电流 PNP 三极管 25 档",
+    "enabled": true,
+    "hfe_typical": [
+      160,
+      400
+    ],
+    "ic_max_a": 0.8,
+    "model": "BC327-25",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.625,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 45.0
+  },
+  "BC327-40": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用中电流 PNP 三极管 40 档",
+    "enabled": true,
+    "hfe_typical": [
+      250,
+      630
+    ],
+    "ic_max_a": 0.8,
+    "model": "BC327-40",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.625,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 45.0
+  },
+  "BC337": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用中电流 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      100,
+      630
+    ],
+    "ic_max_a": 0.8,
+    "model": "BC337",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.625,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 45.0
+  },
+  "BC337-16": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用中电流 NPN 三极管 16 档",
+    "enabled": true,
+    "hfe_typical": [
+      100,
+      250
+    ],
+    "ic_max_a": 0.8,
+    "model": "BC337-16",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.625,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 45.0
+  },
+  "BC337-25": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用中电流 NPN 三极管 25 档",
+    "enabled": true,
+    "hfe_typical": [
+      160,
+      400
+    ],
+    "ic_max_a": 0.8,
+    "model": "BC337-25",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.625,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 45.0
+  },
+  "BC337-40": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用中电流 NPN 三极管 40 档",
+    "enabled": true,
+    "hfe_typical": [
+      250,
+      630
+    ],
+    "ic_max_a": 0.8,
+    "model": "BC337-40",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.625,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 45.0
+  },
+  "BC516": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "小信号 PNP 达林顿三极管",
+    "enabled": true,
+    "hfe_typical": [
+      30000,
+      100000
+    ],
+    "ic_max_a": 0.5,
+    "model": "BC516",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。 原始类型：PNP_DARLINGTON，按 PNP 达林顿管候选处理。",
+    "p_tot_w": 0.625,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 30.0
+  },
+  "BC517": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "小信号 NPN 达林顿三极管",
+    "enabled": true,
+    "hfe_typical": [
+      30000,
+      100000
+    ],
+    "ic_max_a": 0.5,
+    "model": "BC517",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。 原始类型：NPN_DARLINGTON，按 NPN 达林顿管候选处理。",
+    "p_tot_w": 0.625,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 30.0
+  },
+  "BC546": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "低噪声通用小信号 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      110,
+      800
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC546",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.5,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 65.0
+  },
+  "BC546A": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "低噪声通用小信号 NPN 三极管 A 档",
+    "enabled": true,
+    "hfe_typical": [
+      110,
+      220
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC546A",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.5,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 65.0
+  },
+  "BC546B": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "低噪声通用小信号 NPN 三极管 B 档",
+    "enabled": true,
+    "hfe_typical": [
+      200,
+      450
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC546B",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.5,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 65.0
+  },
+  "BC546C": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "低噪声通用小信号 NPN 三极管 C 档",
+    "enabled": true,
+    "hfe_typical": [
+      420,
+      800
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC546C",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.5,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 65.0
+  },
+  "BC547": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用小信号 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      110,
+      800
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC547",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.5,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 45.0
+  },
+  "BC547A": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用小信号 NPN 三极管 A 档",
+    "enabled": true,
+    "hfe_typical": [
+      110,
+      220
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC547A",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.5,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 45.0
+  },
+  "BC547B": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用小信号 NPN 三极管 B 档",
+    "enabled": true,
+    "hfe_typical": [
+      200,
+      450
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC547B",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.5,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 45.0
+  },
+  "BC547C": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用小信号 NPN 三极管 C 档",
+    "enabled": true,
+    "hfe_typical": [
+      420,
+      800
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC547C",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.5,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 45.0
+  },
+  "BC548": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用小信号 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      110,
+      800
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC548",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.5,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 30.0
+  },
+  "BC548A": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用小信号 NPN 三极管 A 档",
+    "enabled": true,
+    "hfe_typical": [
+      110,
+      220
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC548A",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.5,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 30.0
+  },
+  "BC548B": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用小信号 NPN 三极管 B 档",
+    "enabled": true,
+    "hfe_typical": [
+      200,
+      450
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC548B",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.5,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 30.0
+  },
+  "BC548C": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用小信号 NPN 三极管 C 档",
+    "enabled": true,
+    "hfe_typical": [
+      420,
+      800
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC548C",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.5,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 30.0
+  },
+  "BC549": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "低噪声小信号 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      110,
+      800
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC549",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.5,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 30.0
+  },
+  "BC550": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "低噪声小信号 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      110,
+      800
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC550",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.5,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 45.0
+  },
+  "BC556": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "低噪声通用小信号 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      110,
+      800
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC556",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.5,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 65.0
+  },
+  "BC556A": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "低噪声通用小信号 PNP 三极管 A 档",
+    "enabled": true,
+    "hfe_typical": [
+      110,
+      220
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC556A",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.5,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 65.0
+  },
+  "BC556B": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "低噪声通用小信号 PNP 三极管 B 档",
+    "enabled": true,
+    "hfe_typical": [
+      200,
+      450
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC556B",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.5,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 65.0
+  },
+  "BC556C": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "低噪声通用小信号 PNP 三极管 C 档",
+    "enabled": true,
+    "hfe_typical": [
+      420,
+      800
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC556C",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.5,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 65.0
+  },
+  "BC557": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用小信号 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      110,
+      800
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC557",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.5,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 45.0
+  },
+  "BC557A": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用小信号 PNP 三极管 A 档",
+    "enabled": true,
+    "hfe_typical": [
+      110,
+      220
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC557A",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.5,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 45.0
+  },
+  "BC557B": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用小信号 PNP 三极管 B 档",
+    "enabled": true,
+    "hfe_typical": [
+      200,
+      450
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC557B",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.5,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 45.0
+  },
+  "BC557C": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用小信号 PNP 三极管 C 档",
+    "enabled": true,
+    "hfe_typical": [
+      420,
+      800
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC557C",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.5,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 45.0
+  },
+  "BC558": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用小信号 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      110,
+      800
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC558",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.5,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 30.0
+  },
+  "BC558A": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用小信号 PNP 三极管 A 档",
+    "enabled": true,
+    "hfe_typical": [
+      110,
+      220
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC558A",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.5,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 30.0
+  },
+  "BC558B": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用小信号 PNP 三极管 B 档",
+    "enabled": true,
+    "hfe_typical": [
+      200,
+      450
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC558B",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.5,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 30.0
+  },
+  "BC558C": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用小信号 PNP 三极管 C 档",
+    "enabled": true,
+    "hfe_typical": [
+      420,
+      800
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC558C",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.5,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 30.0
+  },
+  "BC559": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "低噪声小信号 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      110,
+      800
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC559",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.5,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 30.0
+  },
+  "BC560": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "低噪声小信号 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      110,
+      800
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC560",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.5,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 45.0
+  },
+  "BC635": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "中电流 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      40,
+      160
+    ],
+    "ic_max_a": 1.0,
+    "model": "BC635",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.8,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 45.0
+  },
+  "BC636": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "中电流 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      40,
+      160
+    ],
+    "ic_max_a": 1.0,
+    "model": "BC636",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.8,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 45.0
+  },
+  "BC639": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "中电流 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      40,
+      160
+    ],
+    "ic_max_a": 1.0,
+    "model": "BC639",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.8,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 80.0
+  },
+  "BC640": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "中电流 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      40,
+      160
+    ],
+    "ic_max_a": 1.0,
+    "model": "BC640",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.8,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 80.0
+  },
+  "BC807": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD 中电流 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      100,
+      630
+    ],
+    "ic_max_a": 0.5,
+    "model": "BC807",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.35,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 45.0
+  },
+  "BC807-16": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD 中电流 PNP 三极管 16 档",
+    "enabled": true,
+    "hfe_typical": [
+      100,
+      250
+    ],
+    "ic_max_a": 0.5,
+    "model": "BC807-16",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.35,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 45.0
+  },
+  "BC807-25": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD 中电流 PNP 三极管 25 档",
+    "enabled": true,
+    "hfe_typical": [
+      160,
+      400
+    ],
+    "ic_max_a": 0.5,
+    "model": "BC807-25",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.35,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 45.0
+  },
+  "BC807-40": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD 中电流 PNP 三极管 40 档",
+    "enabled": true,
+    "hfe_typical": [
+      250,
+      630
+    ],
+    "ic_max_a": 0.5,
+    "model": "BC807-40",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.35,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 45.0
+  },
+  "BC808": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD 25V 中电流 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      100,
+      630
+    ],
+    "ic_max_a": 0.5,
+    "model": "BC808",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.35,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 25.0
+  },
+  "BC817": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD 中电流 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      100,
+      630
+    ],
+    "ic_max_a": 0.5,
+    "model": "BC817",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.35,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 45.0
+  },
+  "BC817-16": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD 中电流 NPN 三极管 16 档",
+    "enabled": true,
+    "hfe_typical": [
+      100,
+      250
+    ],
+    "ic_max_a": 0.5,
+    "model": "BC817-16",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.35,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 45.0
+  },
+  "BC817-25": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD 中电流 NPN 三极管 25 档",
+    "enabled": true,
+    "hfe_typical": [
+      160,
+      400
+    ],
+    "ic_max_a": 0.5,
+    "model": "BC817-25",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.35,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 45.0
+  },
+  "BC817-40": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD 中电流 NPN 三极管 40 档",
+    "enabled": true,
+    "hfe_typical": [
+      250,
+      630
+    ],
+    "ic_max_a": 0.5,
+    "model": "BC817-40",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.35,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 45.0
+  },
+  "BC818": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD 25V 中电流 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      100,
+      630
+    ],
+    "ic_max_a": 0.5,
+    "model": "BC818",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.35,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 25.0
+  },
+  "BC846": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD 65V 通用小信号 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      110,
+      800
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC846",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.25,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 65.0
+  },
+  "BC846A": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD 65V 通用 NPN 三极管 A 档",
+    "enabled": true,
+    "hfe_typical": [
+      110,
+      220
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC846A",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.25,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 65.0
+  },
+  "BC846B": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD 65V 通用 NPN 三极管 B 档",
+    "enabled": true,
+    "hfe_typical": [
+      200,
+      450
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC846B",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.25,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 65.0
+  },
+  "BC846C": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD 65V 通用 NPN 三极管 C 档",
+    "enabled": true,
+    "hfe_typical": [
+      420,
+      800
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC846C",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.25,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 65.0
+  },
+  "BC847": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD 45V 通用小信号 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      110,
+      800
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC847",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.25,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 45.0
+  },
+  "BC847A": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD 45V 通用 NPN 三极管 A 档",
+    "enabled": true,
+    "hfe_typical": [
+      110,
+      220
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC847A",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.25,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 45.0
+  },
+  "BC847B": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD 45V 通用 NPN 三极管 B 档",
+    "enabled": true,
+    "hfe_typical": [
+      200,
+      450
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC847B",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.25,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 45.0
+  },
+  "BC847C": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD 45V 通用 NPN 三极管 C 档",
+    "enabled": true,
+    "hfe_typical": [
+      420,
+      800
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC847C",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.25,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 45.0
+  },
+  "BC848": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD 30V 通用小信号 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      110,
+      800
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC848",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.25,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 30.0
+  },
+  "BC848A": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD 30V 通用 NPN 三极管 A 档",
+    "enabled": true,
+    "hfe_typical": [
+      110,
+      220
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC848A",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.25,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 30.0
+  },
+  "BC848B": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD 30V 通用 NPN 三极管 B 档",
+    "enabled": true,
+    "hfe_typical": [
+      200,
+      450
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC848B",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.25,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 30.0
+  },
+  "BC848C": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD 30V 通用 NPN 三极管 C 档",
+    "enabled": true,
+    "hfe_typical": [
+      420,
+      800
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC848C",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.25,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 30.0
+  },
+  "BC856": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD 65V 通用小信号 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      110,
+      800
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC856",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.25,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 65.0
+  },
+  "BC856A": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD 65V 通用 PNP 三极管 A 档",
+    "enabled": true,
+    "hfe_typical": [
+      110,
+      220
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC856A",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.25,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 65.0
+  },
+  "BC856B": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD 65V 通用 PNP 三极管 B 档",
+    "enabled": true,
+    "hfe_typical": [
+      200,
+      450
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC856B",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.25,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 65.0
+  },
+  "BC856C": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD 65V 通用 PNP 三极管 C 档",
+    "enabled": true,
+    "hfe_typical": [
+      420,
+      800
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC856C",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.25,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 65.0
+  },
+  "BC857": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD 45V 通用小信号 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      110,
+      800
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC857",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.25,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 45.0
+  },
+  "BC857A": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD 45V 通用 PNP 三极管 A 档",
+    "enabled": true,
+    "hfe_typical": [
+      110,
+      220
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC857A",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.25,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 45.0
+  },
+  "BC857B": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD 45V 通用 PNP 三极管 B 档",
+    "enabled": true,
+    "hfe_typical": [
+      200,
+      450
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC857B",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.25,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 45.0
+  },
+  "BC857C": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD 45V 通用 PNP 三极管 C 档",
+    "enabled": true,
+    "hfe_typical": [
+      420,
+      800
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC857C",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.25,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 45.0
+  },
+  "BC858": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD 30V 通用小信号 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      110,
+      800
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC858",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.25,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 30.0
+  },
+  "BC858A": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD 30V 通用 PNP 三极管 A 档",
+    "enabled": true,
+    "hfe_typical": [
+      110,
+      220
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC858A",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.25,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 30.0
+  },
+  "BC858B": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD 30V 通用 PNP 三极管 B 档",
+    "enabled": true,
+    "hfe_typical": [
+      200,
+      450
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC858B",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.25,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 30.0
+  },
+  "BC858C": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD 30V 通用 PNP 三极管 C 档",
+    "enabled": true,
+    "hfe_typical": [
+      420,
+      800
+    ],
+    "ic_max_a": 0.1,
+    "model": "BC858C",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.25,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 30.0
+  },
+  "BD135": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "低压中功率 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      40,
+      250
+    ],
+    "ic_max_a": 1.5,
+    "model": "BD135",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 12.5,
+    "package": "SOT-32",
+    "pinout_hint": "常见 SOT-32 正面朝向时为 B-C-E，散热片/背板通常接 C；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 45.0
+  },
+  "BD136": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "低压中功率 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      40,
+      250
+    ],
+    "ic_max_a": 1.5,
+    "model": "BD136",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 12.5,
+    "package": "SOT-32",
+    "pinout_hint": "常见 SOT-32 正面朝向时为 B-C-E，散热片/背板通常接 C；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 45.0
+  },
+  "BD137": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "低压中功率 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      40,
+      250
+    ],
+    "ic_max_a": 1.5,
+    "model": "BD137",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 12.5,
+    "package": "SOT-32",
+    "pinout_hint": "常见 SOT-32 正面朝向时为 B-C-E，散热片/背板通常接 C；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 60.0
+  },
+  "BD138": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "低压中功率 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      40,
+      250
+    ],
+    "ic_max_a": 1.5,
+    "model": "BD138",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 12.5,
+    "package": "SOT-32",
+    "pinout_hint": "常见 SOT-32 正面朝向时为 B-C-E，散热片/背板通常接 C；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 60.0
+  },
+  "BD139": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "低压中功率 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      40,
+      250
+    ],
+    "ic_max_a": 1.5,
+    "model": "BD139",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 12.5,
+    "package": "SOT-32",
+    "pinout_hint": "常见 SOT-32 正面朝向时为 B-C-E，散热片/背板通常接 C；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 80.0
+  },
+  "BD140": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "低压中功率 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      40,
+      250
+    ],
+    "ic_max_a": 1.5,
+    "model": "BD140",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 12.5,
+    "package": "SOT-32",
+    "pinout_hint": "常见 SOT-32 正面朝向时为 B-C-E，散热片/背板通常接 C；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 80.0
+  },
+  "BD243C": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用 NPN 功率三极管",
+    "enabled": true,
+    "hfe_typical": [
+      15,
+      75
+    ],
+    "ic_max_a": 6.0,
+    "model": "BD243C",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 65.0,
+    "package": "TO-220",
+    "pinout_hint": "常见 TO-220 正面朝向时为 B-C-E，散热片/背板通常接 C；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 100.0
+  },
+  "BD244C": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用 PNP 功率三极管",
+    "enabled": true,
+    "hfe_typical": [
+      15,
+      75
+    ],
+    "ic_max_a": 6.0,
+    "model": "BD244C",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 65.0,
+    "package": "TO-220",
+    "pinout_hint": "常见 TO-220 正面朝向时为 B-C-E，散热片/背板通常接 C；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 100.0
+  },
+  "BD911": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "高电流 NPN 功率三极管",
+    "enabled": true,
+    "hfe_typical": [
+      40,
+      250
+    ],
+    "ic_max_a": 15.0,
+    "model": "BD911",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 90.0,
+    "package": "TO-220",
+    "pinout_hint": "常见 TO-220 正面朝向时为 B-C-E，散热片/背板通常接 C；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 100.0
+  },
+  "BD912": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "高电流 PNP 功率三极管",
+    "enabled": true,
+    "hfe_typical": [
+      40,
+      250
+    ],
+    "ic_max_a": 15.0,
+    "model": "BD912",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 90.0,
+    "package": "TO-220",
+    "pinout_hint": "常见 TO-220 正面朝向时为 B-C-E，散热片/背板通常接 C；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 100.0
+  },
+  "C945": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "常用音频/通用小信号 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      70,
+      700
+    ],
+    "ic_max_a": 0.15,
+    "model": "C945",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.4,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 50.0
+  },
+  "D882": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "低压中功率 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      60,
+      400
+    ],
+    "ic_max_a": 3.0,
+    "model": "D882",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 10.0,
+    "package": "TO-126",
+    "pinout_hint": "常见 TO-126 正面朝向时为 B-C-E，散热片/背板通常接 C；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 30.0
+  },
+  "KSA992": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "低噪声音频小信号 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      200,
+      800
+    ],
+    "ic_max_a": 0.05,
+    "model": "KSA992",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.5,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 120.0
+  },
+  "KSC1845": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "低噪声音频小信号 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      200,
+      800
+    ],
+    "ic_max_a": 0.05,
+    "model": "KSC1845",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.5,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 120.0
+  },
+  "MJ2955": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "经典 PNP 功率三极管",
+    "enabled": true,
+    "hfe_typical": [
+      20,
+      70
+    ],
+    "ic_max_a": 15.0,
+    "model": "MJ2955",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 115.0,
+    "package": "TO-3",
+    "pinout_hint": "常见 TO-3 金属壳/外壳为 C，两个引脚为 B/E；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 60.0
+  },
+  "MJE13003": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "高压开关 NPN 功率三极管",
+    "enabled": true,
+    "hfe_typical": [
+      8,
+      40
+    ],
+    "ic_max_a": 1.5,
+    "model": "MJE13003",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 40.0,
+    "package": "TO-126",
+    "pinout_hint": "常见 TO-126 正面朝向时为 B-C-E，散热片/背板通常接 C；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 400.0
+  },
+  "MJE2955T": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "塑封 PNP 功率三极管",
+    "enabled": true,
+    "hfe_typical": [
+      20,
+      70
+    ],
+    "ic_max_a": 10.0,
+    "model": "MJE2955T",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 75.0,
+    "package": "TO-220",
+    "pinout_hint": "常见 TO-220 正面朝向时为 B-C-E，散热片/背板通常接 C；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 60.0
+  },
+  "MJE3055T": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "塑封 NPN 功率三极管",
+    "enabled": true,
+    "hfe_typical": [
+      20,
+      70
+    ],
+    "ic_max_a": 10.0,
+    "model": "MJE3055T",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 75.0,
+    "package": "TO-220",
+    "pinout_hint": "常见 TO-220 正面朝向时为 B-C-E，散热片/背板通常接 C；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 60.0
+  },
+  "MJE340": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "高压 NPN 功率/驱动三极管",
+    "enabled": true,
+    "hfe_typical": [
+      30,
+      240
+    ],
+    "ic_max_a": 0.5,
+    "model": "MJE340",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 20.0,
+    "package": "TO-126",
+    "pinout_hint": "常见 TO-126 正面朝向时为 B-C-E，散热片/背板通常接 C；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 300.0
+  },
+  "MJE350": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "高压 PNP 功率/驱动三极管",
+    "enabled": true,
+    "hfe_typical": [
+      30,
+      240
+    ],
+    "ic_max_a": 0.5,
+    "model": "MJE350",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 20.0,
+    "package": "TO-126",
+    "pinout_hint": "常见 TO-126 正面朝向时为 B-C-E，散热片/背板通常接 C；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 300.0
+  },
+  "MMBT2222A": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD 通用开关/放大 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      75,
+      300
+    ],
+    "ic_max_a": 0.6,
+    "model": "MMBT2222A",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.35,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 40.0
+  },
+  "MMBT2907A": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD 通用开关/放大 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      100,
+      300
+    ],
+    "ic_max_a": 0.6,
+    "model": "MMBT2907A",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.35,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 60.0
+  },
+  "MMBT3904": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD 通用小信号 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      100,
+      300
+    ],
+    "ic_max_a": 0.2,
+    "model": "MMBT3904",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.35,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 40.0
+  },
+  "MMBT3906": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD 通用小信号 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      100,
+      300
+    ],
+    "ic_max_a": 0.2,
+    "model": "MMBT3906",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.35,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 40.0
+  },
+  "MMBT4401": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD 通用小信号 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      100,
+      300
+    ],
+    "ic_max_a": 0.6,
+    "model": "MMBT4401",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.35,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 40.0
+  },
+  "MMBT4403": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD 通用小信号 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      100,
+      300
+    ],
+    "ic_max_a": 0.6,
+    "model": "MMBT4403",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.35,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 40.0
+  },
+  "MMBT5401": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD 高耐压小信号 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      50,
+      240
+    ],
+    "ic_max_a": 0.6,
+    "model": "MMBT5401",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.35,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 150.0
+  },
+  "MMBT5551": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD 高耐压小信号 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      80,
+      250
+    ],
+    "ic_max_a": 0.6,
+    "model": "MMBT5551",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.35,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 160.0
+  },
+  "MMBTA06": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD 中高压通用 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      100,
+      300
+    ],
+    "ic_max_a": 0.5,
+    "model": "MMBTA06",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.35,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 80.0
+  },
+  "MMBTA13": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD NPN 达林顿三极管",
+    "enabled": true,
+    "hfe_typical": [
+      5000,
+      30000
+    ],
+    "ic_max_a": 0.5,
+    "model": "MMBTA13",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。 原始类型：NPN_DARLINGTON，按 NPN 达林顿管候选处理。",
+    "p_tot_w": 0.35,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 30.0
+  },
+  "MMBTA14": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD NPN 达林顿三极管",
+    "enabled": true,
+    "hfe_typical": [
+      10000,
+      50000
+    ],
+    "ic_max_a": 0.5,
+    "model": "MMBTA14",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。 原始类型：NPN_DARLINGTON，按 NPN 达林顿管候选处理。",
+    "p_tot_w": 0.35,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 30.0
+  },
+  "MMBTA42": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD 高耐压小信号 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      40,
+      200
+    ],
+    "ic_max_a": 0.5,
+    "model": "MMBTA42",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.35,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 300.0
+  },
+  "MMBTA56": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD 中高压通用 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      100,
+      300
+    ],
+    "ic_max_a": 0.5,
+    "model": "MMBTA56",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.35,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 80.0
+  },
+  "MMBTA63": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD PNP 达林顿三极管",
+    "enabled": true,
+    "hfe_typical": [
+      5000,
+      30000
+    ],
+    "ic_max_a": 0.5,
+    "model": "MMBTA63",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。 原始类型：PNP_DARLINGTON，按 PNP 达林顿管候选处理。",
+    "p_tot_w": 0.35,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 30.0
+  },
+  "MMBTA64": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD PNP 达林顿三极管",
+    "enabled": true,
+    "hfe_typical": [
+      10000,
+      50000
+    ],
+    "ic_max_a": 0.5,
+    "model": "MMBTA64",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。 原始类型：PNP_DARLINGTON，按 PNP 达林顿管候选处理。",
+    "p_tot_w": 0.35,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 30.0
+  },
+  "MMBTA92": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD 高耐压小信号 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      40,
+      200
+    ],
+    "ic_max_a": 0.5,
+    "model": "MMBTA92",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.35,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 300.0
+  },
+  "MMBTH10": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD VHF/RF 小信号 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      60,
+      200
+    ],
+    "ic_max_a": 0.05,
+    "model": "MMBTH10",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.35,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 25.0
+  },
+  "MPS6515": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "低噪声小信号 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      150,
+      600
+    ],
+    "ic_max_a": 0.1,
+    "model": "MPS6515",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.625,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 25.0
+  },
+  "MPS6519": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "低噪声小信号 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      150,
+      600
+    ],
+    "ic_max_a": 0.1,
+    "model": "MPS6519",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.625,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 25.0
+  },
+  "MPS8599": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "低噪声小信号 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      100,
+      500
+    ],
+    "ic_max_a": 0.1,
+    "model": "MPS8599",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.625,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 30.0
+  },
+  "MPSA05": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用中高压 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      100,
+      300
+    ],
+    "ic_max_a": 0.5,
+    "model": "MPSA05",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.625,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 60.0
+  },
+  "MPSA06": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用中高压 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      100,
+      300
+    ],
+    "ic_max_a": 0.5,
+    "model": "MPSA06",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.625,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 80.0
+  },
+  "MPSA42": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "高耐压小信号 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      40,
+      200
+    ],
+    "ic_max_a": 0.5,
+    "model": "MPSA42",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.625,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 300.0
+  },
+  "MPSA43": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "高耐压小信号 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      40,
+      200
+    ],
+    "ic_max_a": 0.5,
+    "model": "MPSA43",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.625,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 200.0
+  },
+  "MPSA44": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "高耐压小信号 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      40,
+      200
+    ],
+    "ic_max_a": 0.3,
+    "model": "MPSA44",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.625,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 400.0
+  },
+  "MPSA55": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用中高压 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      100,
+      300
+    ],
+    "ic_max_a": 0.5,
+    "model": "MPSA55",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.625,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 60.0
+  },
+  "MPSA56": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用中高压 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      100,
+      300
+    ],
+    "ic_max_a": 0.5,
+    "model": "MPSA56",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.625,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 80.0
+  },
+  "MPSA92": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "高耐压小信号 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      40,
+      200
+    ],
+    "ic_max_a": 0.5,
+    "model": "MPSA92",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.625,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 300.0
+  },
+  "MPSA93": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "高耐压小信号 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      40,
+      200
+    ],
+    "ic_max_a": 0.5,
+    "model": "MPSA93",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.625,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 200.0
+  },
+  "MPSH10": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "VHF/RF 小信号 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      60,
+      200
+    ],
+    "ic_max_a": 0.05,
+    "model": "MPSH10",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.35,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 25.0
+  },
+  "MPSH81": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "VHF/RF 小信号 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      30,
+      200
+    ],
+    "ic_max_a": 0.05,
+    "model": "MPSH81",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.35,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 20.0
+  },
+  "P2N2222A": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用开关/放大塑封 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      75,
+      300
+    ],
+    "ic_max_a": 0.6,
+    "model": "P2N2222A",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.625,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 40.0
+  },
+  "PN2222A": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用开关/放大塑封 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      75,
+      300
+    ],
+    "ic_max_a": 0.6,
+    "model": "PN2222A",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.625,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 40.0
+  },
+  "PN2907A": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用开关/放大塑封 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      100,
+      300
+    ],
+    "ic_max_a": 0.6,
+    "model": "PN2907A",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.625,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 60.0
+  },
+  "S8050": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "常用低压中电流 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      85,
+      300
+    ],
+    "ic_max_a": 0.5,
+    "model": "S8050",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.625,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 25.0
+  },
+  "S8550": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "常用低压中电流 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      85,
+      300
+    ],
+    "ic_max_a": 0.5,
+    "model": "S8550",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.625,
+    "package": "TO-92",
+    "pinout_hint": "常见 TO-92 引脚随厂商/系列差异较大，需核对具体 datasheet。",
+    "source": "datasheet",
+    "vceo_max_v": 25.0
+  },
+  "SS8050": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD/小封装低压中电流 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      85,
+      300
+    ],
+    "ic_max_a": 0.5,
+    "model": "SS8050",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.35,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 25.0
+  },
+  "SS8550": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "SMD/小封装低压中电流 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      85,
+      300
+    ],
+    "ic_max_a": 0.5,
+    "model": "SS8550",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 0.35,
+    "package": "SOT-23",
+    "pinout_hint": "常见 SOT-23 为 1=B, 2=E, 3=C 或相近映射；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 25.0
+  },
+  "TIP120": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "NPN 达林顿功率三极管",
+    "enabled": true,
+    "hfe_typical": [
+      1000,
+      5000
+    ],
+    "ic_max_a": 5.0,
+    "model": "TIP120",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。 原始类型：NPN_DARLINGTON，按 NPN 达林顿管候选处理。",
+    "p_tot_w": 65.0,
+    "package": "TO-220",
+    "pinout_hint": "常见 TO-220 正面朝向时为 B-C-E，散热片/背板通常接 C；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 60.0
+  },
+  "TIP121": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "NPN 达林顿功率三极管",
+    "enabled": true,
+    "hfe_typical": [
+      1000,
+      5000
+    ],
+    "ic_max_a": 5.0,
+    "model": "TIP121",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。 原始类型：NPN_DARLINGTON，按 NPN 达林顿管候选处理。",
+    "p_tot_w": 65.0,
+    "package": "TO-220",
+    "pinout_hint": "常见 TO-220 正面朝向时为 B-C-E，散热片/背板通常接 C；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 80.0
+  },
+  "TIP122": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "NPN 达林顿功率三极管",
+    "enabled": true,
+    "hfe_typical": [
+      1000,
+      5000
+    ],
+    "ic_max_a": 5.0,
+    "model": "TIP122",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。 原始类型：NPN_DARLINGTON，按 NPN 达林顿管候选处理。",
+    "p_tot_w": 65.0,
+    "package": "TO-220",
+    "pinout_hint": "常见 TO-220 正面朝向时为 B-C-E，散热片/背板通常接 C；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 100.0
+  },
+  "TIP125": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "PNP 达林顿功率三极管",
+    "enabled": true,
+    "hfe_typical": [
+      1000,
+      5000
+    ],
+    "ic_max_a": 5.0,
+    "model": "TIP125",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。 原始类型：PNP_DARLINGTON，按 PNP 达林顿管候选处理。",
+    "p_tot_w": 65.0,
+    "package": "TO-220",
+    "pinout_hint": "常见 TO-220 正面朝向时为 B-C-E，散热片/背板通常接 C；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 60.0
+  },
+  "TIP126": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "PNP 达林顿功率三极管",
+    "enabled": true,
+    "hfe_typical": [
+      1000,
+      5000
+    ],
+    "ic_max_a": 5.0,
+    "model": "TIP126",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。 原始类型：PNP_DARLINGTON，按 PNP 达林顿管候选处理。",
+    "p_tot_w": 65.0,
+    "package": "TO-220",
+    "pinout_hint": "常见 TO-220 正面朝向时为 B-C-E，散热片/背板通常接 C；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 80.0
+  },
+  "TIP127": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "PNP 达林顿功率三极管",
+    "enabled": true,
+    "hfe_typical": [
+      1000,
+      5000
+    ],
+    "ic_max_a": 5.0,
+    "model": "TIP127",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。 原始类型：PNP_DARLINGTON，按 PNP 达林顿管候选处理。",
+    "p_tot_w": 65.0,
+    "package": "TO-220",
+    "pinout_hint": "常见 TO-220 正面朝向时为 B-C-E，散热片/背板通常接 C；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 100.0
+  },
+  "TIP2955": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用 PNP 功率三极管",
+    "enabled": true,
+    "hfe_typical": [
+      20,
+      70
+    ],
+    "ic_max_a": 15.0,
+    "model": "TIP2955",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 90.0,
+    "package": "TO-218",
+    "pinout_hint": "常见 TO-218 正面朝向时为 B-C-E，散热片/背板通常接 C；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 60.0
+  },
+  "TIP29C": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用功率 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      15,
+      75
+    ],
+    "ic_max_a": 1.0,
+    "model": "TIP29C",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 30.0,
+    "package": "TO-220",
+    "pinout_hint": "常见 TO-220 正面朝向时为 B-C-E，散热片/背板通常接 C；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 100.0
+  },
+  "TIP3055": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用 NPN 功率三极管",
+    "enabled": true,
+    "hfe_typical": [
+      20,
+      70
+    ],
+    "ic_max_a": 15.0,
+    "model": "TIP3055",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 90.0,
+    "package": "TO-218",
+    "pinout_hint": "常见 TO-218 正面朝向时为 B-C-E，散热片/背板通常接 C；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 60.0
+  },
+  "TIP30C": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用功率 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      15,
+      75
+    ],
+    "ic_max_a": 1.0,
+    "model": "TIP30C",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 30.0,
+    "package": "TO-220",
+    "pinout_hint": "常见 TO-220 正面朝向时为 B-C-E，散热片/背板通常接 C；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 100.0
+  },
+  "TIP31C": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用功率 NPN 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      10,
+      50
+    ],
+    "ic_max_a": 3.0,
+    "model": "TIP31C",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 40.0,
+    "package": "TO-220",
+    "pinout_hint": "常见 TO-220 正面朝向时为 B-C-E，散热片/背板通常接 C；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 100.0
+  },
+  "TIP32C": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "通用功率 PNP 三极管",
+    "enabled": true,
+    "hfe_typical": [
+      10,
+      50
+    ],
+    "ic_max_a": 3.0,
+    "model": "TIP32C",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 40.0,
+    "package": "TO-220",
+    "pinout_hint": "常见 TO-220 正面朝向时为 B-C-E，散热片/背板通常接 C；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 100.0
+  },
+  "TIP35C": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "大电流 NPN 功率三极管",
+    "enabled": true,
+    "hfe_typical": [
+      25,
+      100
+    ],
+    "ic_max_a": 25.0,
+    "model": "TIP35C",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 125.0,
+    "package": "TO-218",
+    "pinout_hint": "常见 TO-218 正面朝向时为 B-C-E，散热片/背板通常接 C；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 100.0
+  },
+  "TIP36C": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "大电流 PNP 功率三极管",
+    "enabled": true,
+    "hfe_typical": [
+      25,
+      100
+    ],
+    "ic_max_a": 25.0,
+    "model": "TIP36C",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 125.0,
+    "package": "TO-218",
+    "pinout_hint": "常见 TO-218 正面朝向时为 B-C-E，散热片/背板通常接 C；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 100.0
+  },
+  "TIP41C": {
+    "bjt_type": "NPN",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "中功率 NPN 功率三极管",
+    "enabled": true,
+    "hfe_typical": [
+      15,
+      75
+    ],
+    "ic_max_a": 6.0,
+    "model": "TIP41C",
+    "notes": "注意散热条件会影响 Ptot",
+    "p_tot_w": 65.0,
+    "package": "TO-220",
+    "pinout_hint": "常见 TO-220 正面朝向时为 B-C-E，散热片通常接 C。",
+    "source": "datasheet",
+    "vceo_max_v": 100.0
+  },
+  "TIP42C": {
+    "bjt_type": "PNP",
+    "confidence": "user_confirmed",
+    "confirmed_by_user": true,
+    "description": "中功率 PNP 功率三极管",
+    "enabled": true,
+    "hfe_typical": [
+      15,
+      75
+    ],
+    "ic_max_a": 6.0,
+    "model": "TIP42C",
+    "notes": "代表性 datasheet 参数；不同厂商、封装和 hFE 分档可能不同，设计前请复核具体料号 datasheet。",
+    "p_tot_w": 65.0,
+    "package": "TO-220",
+    "pinout_hint": "常见 TO-220 正面朝向时为 B-C-E，散热片/背板通常接 C；不同厂商需核对。",
+    "source": "datasheet",
+    "vceo_max_v": 100.0
+  }
+}

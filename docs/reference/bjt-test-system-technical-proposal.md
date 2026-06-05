@@ -1,5 +1,7 @@
 # BJT 共射极组态自动化测试系统 — 技术方案
 
+> 历史参考：本文是早期完整技术方案，包含已经废弃的桌面 GUI 设想。当前实现主线以 Web UI + CLI 为准。
+>
 > 目标硬件：上海雨骤科技 Raindrop **Model S**（雨骤 S）
 > 目标 SDK：Instruments Playground SDK — Python API (`pyRD`)
 > 适用对象：国产 NPN / PNP 小信号双极型晶体管（典型代表：S8050、S8550、9013、9014、2N3904、2N3906 等）

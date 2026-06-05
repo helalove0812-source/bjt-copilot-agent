@@ -121,7 +121,7 @@ const DEFAULT_TEST_CONFIG = {
   device: "雨骤 Model S",
   rb: "22000",
   rc: "220",
-  ic: "0.03",
+  ic: "0.30",
   pw: "0.30",
   icr: "0.0005–0.02",
   vce: "2.0–4.0",
@@ -177,7 +177,7 @@ function toBackendConfig(config) {
     hw_config: {
       R_B: Number.parseFloat(config.rb) || 22000,
       R_C: Number.parseFloat(config.rc) || 220,
-      Ic_max_A: Number.parseFloat(config.ic) || 0.03,
+      Ic_max_A: Number.parseFloat(config.ic) || 0.30,
       Pmax_W: Number.parseFloat(config.pw) || 0.30,
       lin_ic_range: parseRange(config.icr, [0.0005, 0.02]),
       lin_vce_window: parseRange(config.vce, [2.0, 4.0]),
@@ -608,9 +608,47 @@ const PROFILE_FIELD_LABELS = {
 
 const PROFILE_UNSAVED_MESSAGE = "BJTagent：本次型号尚未保存到本地库，可在确认后写入型号库";
 const PROFILE_SAVED_MESSAGE = "BJTagent：已保存到本地型号库，后续可直接复用";
-const LIBRARY_PANEL_OPTIONS = ["BJTagent", "器件库"];
+const RIGHT_PANEL_OPTIONS = ["BJTagent", "设置", "器件库"];
 const LIBRARY_COMMAND_HINTS = ["列出已保存型号", "查看 ", "删除 ", "启用 ", "禁用 ", "更新 ", "新增 "];
 const HARDWARE_WARNING_DETAIL = "存在误接线、器件损坏或过流风险。请确认器件、夹具、引脚、限流电阻、量程和供电状态已经检查。";
+const LLM_MODEL_STORAGE_KEY = "bjt_llm_models_v1";
+const DEFAULT_LLM_MODELS = [
+  { id: "deepseek-v4-flash", name: "deepseek-v4-flash", provider: "deepseek", model: "deepseek-v4-flash", baseUrl: "", apiKey: "" },
+  { id: "deepseek-pro", name: "deepseek-pro", provider: "deepseek", model: "deepseek-pro", baseUrl: "", apiKey: "" },
+];
+
+function normalizeLlmModels(items) {
+  const merged = [...DEFAULT_LLM_MODELS, ...(Array.isArray(items) ? items : [])];
+  const seen = new Set();
+  return merged
+    .map((item) => ({
+      id: String(item?.id || item?.model || `model-${Date.now()}`).trim(),
+      name: String(item?.name || item?.model || "未命名模型").trim(),
+      provider: String(item?.provider || "deepseek").trim().toLowerCase(),
+      model: String(item?.model || "").trim(),
+      baseUrl: String(item?.baseUrl || item?.base_url || "").trim(),
+      apiKey: String(item?.apiKey || item?.api_key || "").trim(),
+    }))
+    .filter((item) => item.id && item.model && ["deepseek", "openai"].includes(item.provider))
+    .filter((item) => {
+      if (seen.has(item.id)) return false;
+      seen.add(item.id);
+      return true;
+    });
+}
+
+function loadLlmModels() {
+  if (typeof window === "undefined") return DEFAULT_LLM_MODELS;
+  try {
+    return normalizeLlmModels(JSON.parse(window.localStorage.getItem(LLM_MODEL_STORAGE_KEY) || "[]"));
+  } catch {
+    return DEFAULT_LLM_MODELS;
+  }
+}
+
+function createLlmModelId(provider, model) {
+  return `${provider}-${model}-${Date.now()}`.replace(/[^a-zA-Z0-9._-]+/g, "-");
+}
 
 function formatIntentBrief(intent) {
   if (!intent || !intent.action) return "无";
@@ -667,6 +705,56 @@ function looksLikeLibraryCommand(text) {
   return LIBRARY_COMMAND_HINTS.some((item) => text.includes(item));
 }
 
+function formatPendingPlanUpdate(update) {
+  const summary = update?.summary || {};
+  const parts = [];
+  if (summary.vcc_points) parts.push(`Vcc ${summary.vcc_points} 点`);
+  if (summary.vbb_points) parts.push(`Vbb ${summary.vbb_points} 点`);
+  if (summary.scan_points) parts.push(`共 ${summary.scan_points} 个扫描组合`);
+  if (summary.static_points) parts.push(`静态点 ${summary.static_points} 个`);
+  const rationale = update?.rationale ? `${update.rationale} ` : "";
+  return `${rationale}${parts.join("，") || "待确认计划修改"}`;
+}
+
+function formatToolTaskObjective(name) {
+  const labels = {
+    propose_plan_update: "生成计划修改提案",
+    apply_plan_update: "应用已确认计划修改",
+    lookup_transistor: "查询器件资料",
+    build_test_plan: "生成测试计划",
+    evaluate_plan_safety: "评审计划安全边界",
+    run_simulation: "运行仿真",
+    diagnose_result: "诊断结果",
+    delegate_task: "拆解任务",
+    session_search: "检索会话上下文",
+  };
+  return labels[name] || name || "工具调用";
+}
+
+function formatToolTaskResult(item) {
+  const result = item?.result || {};
+  if (result.error) return String(result.error);
+  if (item?.name === "propose_plan_update") return formatPendingPlanUpdate(result.pending_plan_update);
+  if (item?.name === "apply_plan_update") return "计划修改已应用";
+  if (item?.name === "build_test_plan" && result.plan) {
+    return `${result.plan.model || "UNKNOWN"} / ${result.plan.goal || "auto"}`;
+  }
+  return result.ok === false ? "工具失败" : "完成";
+}
+
+function RightPanelTabs({ rightPanel, setRightPanel }) {
+  const index = RIGHT_PANEL_OPTIONS.includes(rightPanel) ? RIGHT_PANEL_OPTIONS.indexOf(rightPanel) : 0;
+  return (
+    <div className="insp-tabs">
+      <Segmented
+        options={RIGHT_PANEL_OPTIONS}
+        value={index}
+        onChange={(nextIndex) => setRightPanel(RIGHT_PANEL_OPTIONS[nextIndex] || "BJTagent")}
+      />
+    </div>
+  );
+}
+
 function AIPanel({
   config,
   currentPlan,
@@ -680,38 +768,33 @@ function AIPanel({
   setMsgs,
   tab,
   setTab,
-  provider,
-  setProvider,
-  model,
-  setModel,
-  apiKey,
-  setApiKey,
+  llmModel,
   datasheetLookup,
-  setDatasheetLookup,
+  showIntentDebug,
+  agentMode,
   text,
   setText,
-  agentStatus,
   agentEvent,
+  handledAgentEventId,
+  setHandledAgentEventId,
+  apiOnline,
+  onCheckApi,
+  setApiOnline,
+  setAgentTrace,
   onPlanReady,
   rightPanel,
   setRightPanel,
   onOpenLibrary,
 }) {
-  const [apiOnline, setApiOnline] = useState(false);
-  const [showIntentDebug, setShowIntentDebug] = useState(false);
   const chatRef = useRef(null);
   const lastPendingModelRef = useRef("");
   const lastFieldSignatureRef = useRef("");
-  const lastAgentEventIdRef = useRef(null);
   const lastSystemMessageKeyRef = useRef("");
   const unsavedProfileNoticeRef = useRef(new Set());
   const savedProfileNoticeRef = useRef(new Set());
   const pendingProfileModel = conversationState?.pending_profile_model || "";
   const pendingProfileFields = conversationState?.pending_profile_fields || {};
   const profileFieldOrder = ["bjt_type", "vceo_max_v", "ic_max_a", "p_tot_w"];
-  const recordedFields = profileFieldOrder
-    .map((key) => formatProfileFieldValue(key, pendingProfileFields[key]))
-    .filter(Boolean);
   const missingFields = profileFieldOrder
     .filter((key) => !formatProfileFieldValue(key, pendingProfileFields[key]))
     .map((key) => PROFILE_FIELD_LABELS[key] || key);
@@ -741,24 +824,14 @@ function AIPanel({
     }
   }, [pendingProfileModel, pendingProfileFields, missingFields.length]);
   useEffect(() => {
-    if (!agentEvent?.id || agentEvent.id === lastAgentEventIdRef.current) return;
-    lastAgentEventIdRef.current = agentEvent.id;
+    if (!agentEvent?.id || agentEvent.id === handledAgentEventId) return;
+    setHandledAgentEventId(agentEvent.id);
     pushUniqueSystemMessage(agentEvent.text, `agent-event:${agentEvent.text}`);
-  }, [agentEvent]);
-
-  const checkApi = async () => {
-    try {
-      const res = await fetch("http://127.0.0.1:8765/api/health");
-      const data = await res.json();
-      setApiOnline(Boolean(res.ok && data.ok));
-    } catch {
-      setApiOnline(false);
-    }
-  };
-  useEffect(() => { checkApi(); }, []);
+  }, [agentEvent, handledAgentEventId, setHandledAgentEventId]);
 
   const send = async () => {
-    const q = text.trim() || "帮我为 2N2222 生成完整测试计划";
+    const q = text.trim();
+    if (!q) return;
     setMsgs((m) => [...m, { role: "me", text: q }]);
     setText("");
     if (looksLikeLibraryCommand(q)) {
@@ -789,9 +862,11 @@ function AIPanel({
             messages: msgs.map((item) => ({ role: item.role === "me" ? "user" : "assistant", content: item.text })),
           },
           ai_settings: {
-            provider: provider === 1 ? "deepseek" : "local",
-            model,
-            api_key: apiKey,
+            provider: llmModel?.provider || "deepseek",
+            model: llmModel?.model || "deepseek-v4-flash",
+            base_url: llmModel?.baseUrl || undefined,
+            api_key: llmModel?.apiKey || undefined,
+            agent_mode: agentMode,
             datasheet_lookup: datasheetLookup,
             debug_intent: showIntentDebug,
           },
@@ -805,6 +880,16 @@ function AIPanel({
       }
       const resolvedProfileModel = resolveProfileModel(data.conversation_state || null, currentPlan);
       setConversationState(data.conversation_state || null);
+      setAgentTrace({
+        toolCalls: Array.isArray(data.tool_calls) ? data.tool_calls : [],
+        todos: Array.isArray(data.todos) ? data.todos : [],
+        taskGraph: data.task_graph && Array.isArray(data.task_graph.subtasks) ? data.task_graph : null,
+        pendingPlanUpdate: data.pending_plan_update || data.conversation_state?.pending_plan_update || null,
+        memory: {
+          project: Array.isArray(data.memory?.project) ? data.memory.project : [],
+          user: Array.isArray(data.memory?.user) ? data.memory.user : [],
+        },
+      });
       if (data.plan) onPlanReady?.(data.plan);
       const debugMessage = showIntentDebug ? formatIntentDebug(data.intent_debug) : "";
       setMsgs((m) => [
@@ -833,51 +918,241 @@ function AIPanel({
 
   return (
     <aside className="inspector">
-      <div className="insp-head"><h3>BJTagent</h3><button className="clear" onClick={() => setMsgs([])}>清空</button></div>
-      <div className="insp-tabs">
-        <Segmented
-          options={["BJTagent", "器件库"]}
-          value={rightPanel === "BJTagent" ? 0 : 1}
-          onChange={(index) => setRightPanel(index === 0 ? "BJTagent" : "器件库")}
-        />
-      </div>
-      <div className="agent-card">
-        <div className="agent-card-head">
-          <strong>BJTagent</strong>
-          <span className="agent-badge">{agentStatus}</span>
+      <div className="insp-head">
+        <div className="insp-title">
+          <h3>BJTagent</h3>
+          <button className={"agent-conn " + (apiOnline ? "on" : "off")} onClick={onCheckApi}>
+            <span />
+            {apiOnline ? "已连接" : "未连接"}
+          </button>
         </div>
-        {pendingProfileModel ? (
-          <>
-            <div className="agent-line">当前正在补全：{pendingProfileModel}</div>
-            <div className="agent-line">已记录字段：{recordedFields.length > 0 ? recordedFields.join(" / ") : "暂无"}</div>
-            <div className="agent-line">缺失字段：{missingFields.length > 0 ? missingFields.join(" / ") : "无"}</div>
-            <div className="agent-line">可直接回复：NPN，Vceo 40V，Ic 200mA，Ptot 500mW</div>
-          </>
-        ) : (
-          <div className="agent-line">当前状态：{agentStatus}</div>
-        )}
+        <button className="clear" onClick={() => {
+          setMsgs([]);
+          setHandledAgentEventId(agentEvent?.id || null);
+        }}>清空</button>
       </div>
+      <RightPanelTabs rightPanel={rightPanel} setRightPanel={setRightPanel} />
       <div className="insp-tabs"><Segmented options={["测试对话", "应用配置"]} value={tab} onChange={setTab} /></div>
       <div className="chat" ref={chatRef}>
         {msgs.length === 0 ? INTRO : msgs.map((m, i) => <div key={i} className={"bubble " + m.role}>{m.text}</div>)}
       </div>
       <div className="composer">
-        <button className={"service " + (apiOnline ? "on" : "off")} onClick={checkApi}>
-          {apiOnline ? "AI 服务已连接" : "AI 服务未启动 · 重试"}
-        </button>
-        <Segmented options={["本地", "DeepSeek"]} value={provider} onChange={setProvider} />
-        <input className="mini" value={model} onChange={(e) => setModel(e.target.value)} />
-        <input className="mini" type="password" placeholder="API Key,仅当前进程使用" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
-        <label className="agent-line" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <input type="checkbox" checked={datasheetLookup} onChange={(event) => setDatasheetLookup(event.target.checked)} />
-          联网 datasheet 补全
-        </label>
-        <label className="agent-line" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <input type="checkbox" checked={showIntentDebug} onChange={(event) => setShowIntentDebug(event.target.checked)} />
-          显示理解过程
-        </label>
         <textarea placeholder="直接描述器件型号、测试目标、限制条件…" value={text} onChange={(e) => setText(e.target.value)} />
         <button className="send" onClick={send}>发送</button>
+      </div>
+    </aside>
+  );
+}
+
+function AgentSettingsPanel({
+  rightPanel,
+  setRightPanel,
+  llmModels,
+  selectedModelId,
+  setSelectedModelId,
+  modelDraft,
+  setModelDraft,
+  onAddModel,
+  onDeleteModel,
+  datasheetLookup,
+  setDatasheetLookup,
+  showIntentDebug,
+  setShowIntentDebug,
+  agentMode,
+  setAgentMode,
+  conversationState,
+  agentStatus,
+  apiOnline,
+  onCheckApi,
+  agentTrace,
+}) {
+  const pendingProfileModel = conversationState?.pending_profile_model || "";
+  const pendingProfileFields = conversationState?.pending_profile_fields || {};
+  const profileFieldOrder = ["bjt_type", "vceo_max_v", "ic_max_a", "p_tot_w"];
+  const recordedFields = profileFieldOrder
+    .map((key) => formatProfileFieldValue(key, pendingProfileFields[key]))
+    .filter(Boolean);
+  const missingFields = profileFieldOrder
+    .filter((key) => !formatProfileFieldValue(key, pendingProfileFields[key]))
+    .map((key) => PROFILE_FIELD_LABELS[key] || key);
+  const toolNames = (agentTrace.toolCalls || [])
+    .map((item) => item?.name)
+    .filter(Boolean)
+    .slice(-6);
+  const projectMemory = Array.isArray(agentTrace.memory?.project) ? agentTrace.memory.project : [];
+  const userMemory = Array.isArray(agentTrace.memory?.user) ? agentTrace.memory.user : [];
+  const taskSubtasks = Array.isArray(agentTrace.taskGraph?.subtasks) ? agentTrace.taskGraph.subtasks : [];
+  const pendingPlanUpdate = agentTrace.pendingPlanUpdate || conversationState?.pending_plan_update || null;
+  const toolTasks = (agentTrace.toolCalls || []).map((item, index) => ({
+    id: `tool-${index}-${item?.name || "tool"}`,
+    objective: formatToolTaskObjective(item?.name),
+    status: item?.result?.ok === false ? "blocked" : "completed",
+    suggested_tool: item?.name || "tool",
+    result: formatToolTaskResult(item),
+  }));
+  const displayTasks = taskSubtasks.length > 0
+    ? taskSubtasks
+    : pendingPlanUpdate
+      ? [
+          {
+            id: "pending-plan-update",
+            objective: "等待确认计划修改提案",
+            status: "in_progress",
+            suggested_tool: "apply_plan_update",
+            result: formatPendingPlanUpdate(pendingPlanUpdate),
+          },
+          ...toolTasks,
+        ]
+      : toolTasks.length > 0
+        ? toolTasks
+        : [];
+
+  return (
+    <aside className="inspector">
+      <div className="insp-head"><h3>设置</h3><button className="clear" onClick={() => setRightPanel("BJTagent")}>返回</button></div>
+      <RightPanelTabs rightPanel={rightPanel} setRightPanel={setRightPanel} />
+      <div className="settings-scroll">
+        <div className="agent-card">
+          <div className="agent-card-head">
+            <strong>BJTagent 状态</strong>
+            <div className="agent-head-actions">
+              <button className={"agent-service " + (apiOnline ? "on" : "off")} onClick={onCheckApi}>
+                {apiOnline ? "AI 已连接" : "AI 未连接"}
+              </button>
+              <span className="agent-badge">{agentStatus}</span>
+            </div>
+          </div>
+          {pendingProfileModel ? (
+            <>
+              <div className="agent-line">当前正在补全：{pendingProfileModel}</div>
+              <div className="agent-line">已记录字段：{recordedFields.length > 0 ? recordedFields.join(" / ") : "暂无"}</div>
+              <div className="agent-line">缺失字段：{missingFields.length > 0 ? missingFields.join(" / ") : "无"}</div>
+              <div className="agent-line">可直接回复：NPN，Vceo 40V，Ic 200mA，Ptot 500mW</div>
+            </>
+          ) : (
+            <div className="agent-line">当前状态：{agentStatus}</div>
+          )}
+          {toolNames.length > 0 ? (
+            <div className="agent-tool-list">
+              {toolNames.map((name, index) => <span key={`${name}-${index}`} className="agent-pill">{name}</span>)}
+            </div>
+          ) : null}
+          <div className="agent-section">
+            <div className="agent-section-head">任务列表</div>
+            {displayTasks.length > 0 ? (
+              displayTasks.map((item) => (
+                <div key={item.id || item.objective} className="agent-task">
+                  <div className="agent-row">
+                    <span className={"agent-dot " + (item.status || "pending")} />
+                    <span>{item.objective || item.id}</span>
+                  </div>
+                  <div className="agent-task-meta">
+                    <span>{item.status || "pending"}</span>
+                    <span>{item.suggested_tool || "no_tool"}</span>
+                  </div>
+                  {item.result ? <div className="agent-task-result">{item.result}</div> : null}
+                </div>
+              ))
+            ) : (agentTrace.todos || []).length > 0 ? (
+              (agentTrace.todos || []).slice(0, 4).map((item) => (
+                <div key={item.id || item.content} className="agent-row">
+                  <span className={"agent-dot " + (item.status || "pending")} />
+                  <span>{item.content}</span>
+                </div>
+              ))
+            ) : (
+              <div className="agent-line">暂无</div>
+            )}
+          </div>
+          <div className="agent-section">
+            <div className="agent-section-head">长期记忆</div>
+            <div className="agent-memory-grid">
+              <span>项目 {projectMemory.length}</span>
+              <span>用户 {userMemory.length}</span>
+            </div>
+            {[...projectMemory, ...userMemory].slice(0, 2).map((item) => (
+              <div key={item} className="agent-line">{item}</div>
+            ))}
+          </div>
+        </div>
+        <div className="agent-card">
+          <div className="agent-card-head">
+            <strong>BJTagent 设置</strong>
+            <span className="agent-badge">{llmModels.find((item) => item.id === selectedModelId)?.provider || "deepseek"}</span>
+          </div>
+          <label className="setting-field">
+            <span>模型</span>
+            <select className="mini" value={selectedModelId} onChange={(e) => setSelectedModelId(e.target.value)}>
+              {llmModels.map((item) => (
+                <option key={item.id} value={item.id}>{item.name}</option>
+              ))}
+            </select>
+          </label>
+          <div className="settings-checks">
+            <label>
+              <input type="checkbox" checked={datasheetLookup} onChange={(event) => setDatasheetLookup(event.target.checked)} />
+              联网 datasheet 补全
+            </label>
+            <label>
+              <input type="checkbox" checked={showIntentDebug} onChange={(event) => setShowIntentDebug(event.target.checked)} />
+              显示理解过程
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={agentMode === "tool_calling"}
+                onChange={(event) => setAgentMode(event.target.checked ? "tool_calling" : "classic")}
+              />
+              工具调用
+            </label>
+          </div>
+        </div>
+        <div className="agent-card">
+          <div className="agent-card-head">
+            <strong>添加模型</strong>
+            <button className="agent-mini-action" onClick={onAddModel}>添加</button>
+          </div>
+          <label className="setting-field">
+            <span>显示名称</span>
+            <input className="mini" value={modelDraft.name} onChange={(e) => setModelDraft({ ...modelDraft, name: e.target.value })} />
+          </label>
+          <label className="setting-field">
+            <span>Provider</span>
+            <select className="mini" value={modelDraft.provider} onChange={(e) => setModelDraft({ ...modelDraft, provider: e.target.value })}>
+              <option value="deepseek">deepseek</option>
+              <option value="openai">openai</option>
+            </select>
+          </label>
+          <label className="setting-field">
+            <span>模型 ID</span>
+            <input className="mini" value={modelDraft.model} onChange={(e) => setModelDraft({ ...modelDraft, model: e.target.value })} />
+          </label>
+          <label className="setting-field">
+            <span>Base URL</span>
+            <input className="mini" placeholder="留空使用环境默认值" value={modelDraft.baseUrl} onChange={(e) => setModelDraft({ ...modelDraft, baseUrl: e.target.value })} />
+          </label>
+          <label className="setting-field">
+            <span>API Key</span>
+            <input className="mini" type="password" placeholder="留空使用环境变量" value={modelDraft.apiKey} onChange={(e) => setModelDraft({ ...modelDraft, apiKey: e.target.value })} />
+          </label>
+        </div>
+        <div className="agent-card">
+          <div className="agent-card-head">
+            <strong>模型列表</strong>
+            <span className="agent-badge">{llmModels.length} 个</span>
+          </div>
+          {llmModels.map((item) => (
+            <div className="model-row" key={item.id}>
+              <button className="model-pick" onClick={() => setSelectedModelId(item.id)}>
+                <span>{item.name}</span>
+                <small>{item.provider} / {item.model}</small>
+              </button>
+              {!DEFAULT_LLM_MODELS.some((base) => base.id === item.id) ? (
+                <button className="agent-mini-action danger" onClick={() => onDeleteModel(item.id)}>删除</button>
+              ) : null}
+            </div>
+          ))}
+        </div>
       </div>
     </aside>
   );
@@ -904,13 +1179,7 @@ function DeviceLibraryPanel({
   return (
     <aside className="inspector">
       <div className="insp-head"><h3>器件库</h3><button className="clear" onClick={onRefresh}>刷新</button></div>
-      <div className="insp-tabs">
-        <Segmented
-          options={["BJTagent", "器件库"]}
-          value={rightPanel === "BJTagent" ? 0 : 1}
-          onChange={(index) => setRightPanel(index === 0 ? "BJTagent" : "器件库")}
-        />
-      </div>
+      <RightPanelTabs rightPanel={rightPanel} setRightPanel={setRightPanel} />
       <div className="agent-card">
         <div className="agent-card-head">
           <strong>用户器件库</strong>
@@ -985,15 +1254,26 @@ export default function App() {
   const [conversationState, setConversationState] = useState(null);
   const [aiMessages, setAiMessages] = useState([]);
   const [aiTab, setAiTab] = useState(0);
-  const [aiProvider, setAiProvider] = useState(1);
-  const [aiModel, setAiModel] = useState("deepseek-v4-flash");
-  const [aiApiKey, setAiApiKey] = useState("");
+  const [llmModels, setLlmModels] = useState(loadLlmModels);
+  const [aiModelId, setAiModelId] = useState(() => loadLlmModels()[0]?.id || "deepseek-v4-flash");
+  const [modelDraft, setModelDraft] = useState({ name: "", provider: "deepseek", model: "", baseUrl: "", apiKey: "" });
   const [aiDatasheetLookup, setAiDatasheetLookup] = useState(true);
+  const [aiShowIntentDebug, setAiShowIntentDebug] = useState(false);
+  const [aiAgentMode, setAiAgentMode] = useState("tool_calling");
+  const [aiApiOnline, setAiApiOnline] = useState(false);
+  const [aiAgentTrace, setAiAgentTrace] = useState({
+    toolCalls: [],
+    todos: [],
+    taskGraph: null,
+    pendingPlanUpdate: null,
+    memory: { project: [], user: [] },
+  });
   const [aiText, setAiText] = useState("");
   const [testPoints, setTestPoints] = useState([]);
   const [planLimits, setPlanLimits] = useState({ ic: DEFAULT_TEST_CONFIG.ic, power: DEFAULT_TEST_CONFIG.pw });
   const [busy, setBusy] = useState(false);
   const [agentEvent, setAgentEvent] = useState(null);
+  const [handledAgentEventId, setHandledAgentEventId] = useState(null);
   const [rightPanel, setRightPanel] = useState("BJTagent");
   const [userProfiles, setUserProfiles] = useState([]);
   const [selectedProfile, setSelectedProfile] = useState(null);
@@ -1009,6 +1289,50 @@ export default function App() {
     if (currentPlan) return "已生成计划";
     return "空闲";
   }, [busy, conversationState, currentPlan, config.runMode]);
+  const selectedLlmModel = useMemo(
+    () => llmModels.find((item) => item.id === aiModelId) || llmModels[0] || DEFAULT_LLM_MODELS[0],
+    [llmModels, aiModelId],
+  );
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(LLM_MODEL_STORAGE_KEY, JSON.stringify(llmModels));
+    }
+    if (!llmModels.some((item) => item.id === aiModelId)) {
+      setAiModelId(llmModels[0]?.id || DEFAULT_LLM_MODELS[0].id);
+    }
+  }, [llmModels, aiModelId]);
+
+  const addLlmModel = () => {
+    const model = modelDraft.model.trim();
+    const provider = modelDraft.provider.trim().toLowerCase();
+    if (!model || !["deepseek", "openai"].includes(provider)) return;
+    const next = {
+      id: createLlmModelId(provider, model),
+      name: (modelDraft.name.trim() || model),
+      provider,
+      model,
+      baseUrl: modelDraft.baseUrl.trim(),
+      apiKey: modelDraft.apiKey.trim(),
+    };
+    setLlmModels((items) => normalizeLlmModels([...items, next]));
+    setAiModelId(next.id);
+    setModelDraft({ name: "", provider: "deepseek", model: "", baseUrl: "", apiKey: "" });
+  };
+  const deleteLlmModel = (id) => {
+    if (DEFAULT_LLM_MODELS.some((item) => item.id === id)) return;
+    setLlmModels((items) => normalizeLlmModels(items.filter((item) => item.id !== id)));
+  };
+
+  const checkAiApi = async () => {
+    try {
+      const res = await fetch("http://127.0.0.1:8765/api/health");
+      const data = await res.json();
+      setAiApiOnline(Boolean(res.ok && data.ok));
+    } catch {
+      setAiApiOnline(false);
+    }
+  };
+  useEffect(() => { checkAiApi(); }, []);
 
   const stamp = () => new Date().toLocaleTimeString("zh-CN", { hour12: false });
   const addLog = (m) => setLogs((l) => [...l, { t: stamp(), m }]);
@@ -1438,18 +1762,19 @@ export default function App() {
               setMsgs={setAiMessages}
               tab={aiTab}
               setTab={setAiTab}
-              provider={aiProvider}
-              setProvider={setAiProvider}
-              model={aiModel}
-              setModel={setAiModel}
-              apiKey={aiApiKey}
-              setApiKey={setAiApiKey}
+              llmModel={selectedLlmModel}
               datasheetLookup={aiDatasheetLookup}
-              setDatasheetLookup={setAiDatasheetLookup}
+              showIntentDebug={aiShowIntentDebug}
+              agentMode={aiAgentMode}
               text={aiText}
               setText={setAiText}
-              agentStatus={agentStatus}
               agentEvent={agentEvent}
+              handledAgentEventId={handledAgentEventId}
+              setHandledAgentEventId={setHandledAgentEventId}
+              apiOnline={aiApiOnline}
+              onCheckApi={checkAiApi}
+              setApiOnline={setAiApiOnline}
+              setAgentTrace={setAiAgentTrace}
               testPoints={testPoints}
               planLimits={planLimits}
               measurements={measurements}
@@ -1458,6 +1783,29 @@ export default function App() {
               rightPanel={rightPanel}
               setRightPanel={setRightPanel}
               onOpenLibrary={openLibraryPanel}
+            />
+          ) : rightPanel === "设置" ? (
+            <AgentSettingsPanel
+              rightPanel={rightPanel}
+              setRightPanel={setRightPanel}
+              llmModels={llmModels}
+              selectedModelId={aiModelId}
+              setSelectedModelId={setAiModelId}
+              modelDraft={modelDraft}
+              setModelDraft={setModelDraft}
+              onAddModel={addLlmModel}
+              onDeleteModel={deleteLlmModel}
+              datasheetLookup={aiDatasheetLookup}
+              setDatasheetLookup={setAiDatasheetLookup}
+              showIntentDebug={aiShowIntentDebug}
+              setShowIntentDebug={setAiShowIntentDebug}
+              agentMode={aiAgentMode}
+              setAgentMode={setAiAgentMode}
+              conversationState={conversationState}
+              agentStatus={agentStatus}
+              apiOnline={aiApiOnline}
+              onCheckApi={checkAiApi}
+              agentTrace={aiAgentTrace}
             />
           ) : (
             <DeviceLibraryPanel
@@ -1655,13 +2003,50 @@ svg .sample-dot{fill:var(--blue);stroke:var(--bg-card);stroke-width:2}
 .log-foot{margin-top:var(--s3)}
 
 .insp-head{display:flex;align-items:center;justify-content:space-between;padding:var(--s5) var(--s5) var(--s3)}
+.insp-title{display:flex;align-items:center;gap:8px;min-width:0}
 .insp-head h3{font-size:15px;font-weight:700;letter-spacing:-.01em}
 .insp-head .clear{border:none;background:transparent;color:var(--blue);font-size:13px;cursor:pointer;font-family:var(--font-sans)}
+.agent-conn{border:none;display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:999px;font-family:var(--font-sans);font-size:11px;font-weight:640;cursor:pointer;white-space:nowrap}
+.agent-conn span{width:6px;height:6px;border-radius:999px;background:currentColor}
+.agent-conn.on{background:rgba(52,199,89,.14);color:var(--green)}
+.agent-conn.off{background:rgba(255,149,0,.16);color:var(--orange)}
 .agent-card{margin:0 var(--s5) var(--s4);padding:12px;border-radius:var(--r-card);background:var(--bg-card);box-shadow:var(--shadow-card);display:flex;flex-direction:column;gap:8px}
 .agent-card-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .agent-card-head strong{font-size:14px;font-weight:700}
+.agent-head-actions{display:flex;align-items:center;justify-content:flex-end;gap:6px;min-width:0;flex-wrap:wrap}
 .agent-badge{display:inline-flex;align-items:center;justify-content:center;padding:4px 10px;border-radius:999px;background:rgba(0,122,255,.12);color:var(--blue);font-size:12px;font-weight:600}
+.agent-service{border:none;display:inline-flex;align-items:center;justify-content:center;padding:4px 9px;border-radius:999px;font-family:var(--font-sans);font-size:12px;font-weight:640;cursor:pointer;white-space:nowrap}
+.agent-service.on{background:rgba(52,199,89,.14);color:var(--green)}
+.agent-service.off{background:rgba(255,149,0,.16);color:var(--orange)}
 .agent-line{font-size:12px;line-height:1.5;color:var(--label-2)}
+.agent-mini-action{border:none;border-radius:999px;background:rgba(0,122,255,.12);color:var(--blue);padding:4px 9px;font-family:var(--font-sans);font-size:12px;font-weight:640;cursor:pointer}
+.agent-mini-action.danger{background:rgba(255,59,48,.12);color:var(--red)}
+.setting-field{display:flex;flex-direction:column;gap:6px;color:var(--label-2);font-size:12px}
+.settings-checks{display:flex;flex-direction:column;gap:9px}
+.settings-checks label{display:flex;align-items:center;gap:7px;min-width:0;color:var(--label-2);font-size:13px;line-height:1.4}
+.settings-checks input{flex:0 0 auto}
+.model-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center}
+.model-pick{border:none;text-align:left;border-radius:var(--r-control);background:var(--bg-fill);padding:8px 10px;cursor:pointer;min-width:0;color:var(--label);font-family:var(--font-sans)}
+.model-pick span{display:block;font-size:12px;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.model-pick small{display:block;margin-top:3px;color:var(--label-3);font-family:var(--font-mono);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.agent-tool-list{display:flex;flex-wrap:wrap;gap:6px}
+.agent-pill{display:inline-flex;align-items:center;min-width:0;max-width:100%;padding:4px 8px;border-radius:999px;background:var(--bg-fill);color:var(--label-2);font-family:var(--font-mono);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.agent-section{display:flex;flex-direction:column;gap:5px;padding-top:2px}
+.agent-section-head{font-size:12px;font-weight:700;color:var(--label)}
+.agent-row{display:grid;grid-template-columns:8px minmax(0,1fr);align-items:start;gap:7px;font-size:12px;line-height:1.45;color:var(--label-2);word-break:break-word}
+.agent-dot{width:7px;height:7px;border-radius:999px;margin-top:5px;background:var(--label-3)}
+.agent-dot.in_progress{background:var(--orange)}
+.agent-dot.completed{background:var(--green)}
+.agent-dot.cancelled{background:var(--red)}
+.agent-dot.blocked{background:var(--red)}
+.agent-task{display:flex;flex-direction:column;gap:4px;padding:7px 0;border-top:.5px solid var(--separator)}
+.agent-task:first-of-type{border-top:none;padding-top:0}
+.agent-task-meta{display:flex;flex-wrap:wrap;gap:6px;margin-left:15px}
+.agent-task-meta span{border-radius:999px;background:var(--bg-fill);padding:3px 7px;color:var(--label-3);font-family:var(--font-mono);font-size:11px}
+.agent-task-result{margin-left:15px;color:var(--label-2);font-size:12px;line-height:1.45;word-break:break-word}
+.agent-memory-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.agent-memory-grid span{border-radius:var(--r-control);background:var(--bg-fill);padding:6px 8px;color:var(--label-2);font-size:12px}
+.settings-scroll{flex:1;min-height:0;overflow-y:auto;padding-bottom:var(--s4)}
 .insp-tabs{padding:0 var(--s5) var(--s4)}
 .chat{flex:1;overflow-y:auto;padding:var(--s2) var(--s5);display:flex;flex-direction:column;gap:var(--s3)}
 .intro{color:var(--label-2);font-size:13px;line-height:1.6}
@@ -1671,12 +2056,10 @@ svg .sample-dot{fill:var(--blue);stroke:var(--bg-card);stroke-width:2}
 .bubble.me{background:var(--blue);color:#fff;align-self:flex-end;border-bottom-right-radius:5px}
 .bubble.system{align-self:center;background:var(--bg-fill);color:var(--label-2);border:1px dashed var(--separator);max-width:96%}
 .composer{border-top:.5px solid var(--separator);padding:var(--s4) var(--s5) var(--s5);display:flex;flex-direction:column;gap:var(--s2);background:var(--bg-sidebar)}
-.service{border:none;border-radius:var(--r-control);padding:8px 11px;font-family:var(--font-sans);font-size:12px;font-weight:640;cursor:pointer;text-align:left}
-.service.on{background:rgba(52,199,89,.14);color:var(--green)}
-.service.off{background:rgba(255,149,0,.16);color:var(--orange)}
-.composer .mini{width:100%;background:var(--bg-control);border:.5px solid var(--separator);border-radius:var(--r-control);padding:8px 11px;font-family:var(--font-mono);font-size:12px;color:var(--label);outline:none}
+.mini{width:100%;background:var(--bg-control);border:.5px solid var(--separator);border-radius:var(--r-control);padding:8px 11px;font-family:var(--font-mono);font-size:12px;color:var(--label);outline:none}
+select.mini{appearance:auto}
 .composer textarea{width:100%;background:var(--bg-control);border:.5px solid var(--separator);border-radius:var(--r-control);padding:10px 11px;font-family:var(--font-sans);font-size:13px;color:var(--label);resize:none;height:64px;outline:none;transition:box-shadow .15s,border-color .15s}
-.composer textarea:focus,.composer .mini:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--focus-ring)}
+.composer textarea:focus,.mini:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--focus-ring)}
 .send{border:none;background:var(--blue);color:#fff;padding:10px;border-radius:var(--r-control);font-family:var(--font-sans);font-size:14px;font-weight:640;cursor:pointer;transition:filter .15s,transform .1s}
 .send:hover{filter:brightness(1.07)}.send:active{transform:scale(.98)}
 

@@ -2,7 +2,7 @@
 
 ## 1. Purpose
 
-This document defines the implementation baseline for the BJT automated test system described in `BJT_Test_System_Technical_Proposal.md`.
+This document defines the implementation baseline for the BJT automated test system described in `docs/reference/bjt-test-system-technical-proposal.md`.
 
 Approved direction:
 

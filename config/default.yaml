@@ -1,7 +1,7 @@
 driver_mode: hardware
 rb_ohm: 22000.0
 rc_ohm: 220.0
-ic_max_a: 0.03
+ic_max_a: 0.30
 pmax_w: 0.30
 vcc_max: 5.0
 lin_ic_lo_a: 0.0005
