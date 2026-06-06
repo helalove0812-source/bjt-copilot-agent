@@ -187,11 +187,19 @@ def test_tool_runtime_exposes_rainfall_hardware_module_tools() -> None:
         "device_emergency_off",
         "hardware_selftest",
         "scope_check",
+        "low_voltage_pin_probe",
+        "relay_matrix_pin_probe",
         "detect_bjt_type",
         "run_static_point",
         "run_vce_sat_point",
         "run_curve_scan",
         "run_full_suite",
+        "update_dut_belief",
+        "suggest_next_measurement",
+        "run_adaptive_characterization",
+        "extract_spice_twin",
+        "plan_residual_followup",
+        "run_residual_followup",
     }.issubset(names)
 
 
@@ -199,11 +207,19 @@ def test_tool_runtime_rainfall_tools_work_in_simulation() -> None:
     runtime = BJTToolRuntime()
 
     connected = runtime.dispatch("device_connect", {"mode": "simulation"})
+    pin_probe = runtime.dispatch("low_voltage_pin_probe", {"mode": "simulation"})
+    relay_probe = runtime.dispatch("relay_matrix_pin_probe", {"mode": "simulation"})
     detected = runtime.dispatch("detect_bjt_type", {"mode": "simulation"})
     point = runtime.dispatch("run_static_point", {"mode": "simulation", "vcc": 3.0, "vbb": 2.0})
 
     assert connected.result["ok"] is True
     assert connected.result["serial"] == "SIM-BJT-001"
+    assert pin_probe.result["ok"] is True
+    assert pin_probe.result["source"] == "ip_sdk_low_voltage_pin_probe"
+    assert pin_probe.result["observations"]
+    assert relay_probe.result["ok"] is True
+    assert relay_probe.result["source"] == "relay_matrix_pin_probe"
+    assert relay_probe.result["pair_results"]
     assert detected.result["ok"] is True
     assert detected.result["detected_bjt_type"] == "NPN"
     assert point.result["ok"] is True
@@ -214,6 +230,24 @@ def test_tool_runtime_hardware_measurement_requires_confirmation() -> None:
     runtime = BJTToolRuntime()
 
     blocked = runtime.dispatch("run_static_point", {"mode": "hardware", "vcc": 3.0, "vbb": 2.0})
+
+    assert blocked.result["ok"] is False
+    assert blocked.result["blocked_reason"] == "hardware_not_allowed"
+
+
+def test_low_voltage_pin_probe_hardware_requires_confirmation() -> None:
+    runtime = BJTToolRuntime()
+
+    blocked = runtime.dispatch("low_voltage_pin_probe", {"mode": "hardware"})
+
+    assert blocked.result["ok"] is False
+    assert blocked.result["blocked_reason"] == "hardware_not_allowed"
+
+
+def test_relay_matrix_pin_probe_hardware_requires_confirmation() -> None:
+    runtime = BJTToolRuntime()
+
+    blocked = runtime.dispatch("relay_matrix_pin_probe", {"mode": "hardware"})
 
     assert blocked.result["ok"] is False
     assert blocked.result["blocked_reason"] == "hardware_not_allowed"

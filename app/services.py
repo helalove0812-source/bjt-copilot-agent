@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from datetime import datetime
 from pathlib import Path
 
@@ -8,11 +9,13 @@ from analysis.exporters import write_summary_json
 from analysis.report import build_artifact_manifest, build_report_summary
 from app.runtime import Runtime
 from core.pyrd_driver import PyRDDriver
+from core.relay_matrix import NullRelayMatrixAdapter, RelayMatrixWrappedDriver, SimulatedRelayMatrixAdapter
 from core.simulation_driver import SimulationDriver
 from core.types import DeviceReport, DriverMode, HwConfig
 from measurement.curves import group_points_by_ib
 from measurement.detector import detect_bjt_type
 from measurement.linearity import summarize_beta_linearity
+from measurement.pin_probe import run_low_voltage_three_pin_probe, run_relay_matrix_pin_permutation_probe
 from measurement.static import measure_static_point
 from measurement.vce_sat import estimate_vce_sat
 from measurement.scanner import scan_curves_software, scan_curves_hardware
@@ -21,7 +24,18 @@ from measurement.scanner import scan_curves_software, scan_curves_hardware
 def build_driver(mode: DriverMode):
     if mode == "simulation":
         return SimulationDriver()
-    return PyRDDriver()
+    return _with_optional_relay_matrix(PyRDDriver())
+
+
+def _with_optional_relay_matrix(driver):
+    backend = os.getenv("BJT_RELAY_MATRIX_BACKEND", "").strip().lower()
+    if backend in {"simulated", "simulation", "mock"}:
+        return RelayMatrixWrappedDriver(driver, SimulatedRelayMatrixAdapter())
+    if backend in {"none", ""}:
+        return RelayMatrixWrappedDriver(driver, NullRelayMatrixAdapter())
+    raise RuntimeError(
+        "未知 BJT_RELAY_MATRIX_BACKEND={0}; 当前支持 none/simulated".format(backend)
+    )
 
 
 def build_runtime(mode: DriverMode, cfg: HwConfig) -> Runtime:
@@ -109,6 +123,63 @@ def run_scope_check(mode: DriverMode, cfg: HwConfig, samples: int, frequency_hz:
             "samples": int(samples),
             "frequency_hz": int(frequency_hz),
             "mean": {"ch1": vb, "ch2": vc},
+        }
+    finally:
+        _disable_outputs(runtime.driver)
+        runtime.driver.close()
+
+
+def run_low_voltage_pin_probe(
+    mode: DriverMode,
+    cfg: HwConfig,
+    *,
+    max_probe_voltage_v: float = 1.2,
+    max_probe_current_a: float = 0.001,
+    samples: int = 512,
+):
+    runtime = build_runtime(mode, cfg)
+    try:
+        return {
+            "serial": runtime.serial,
+            "device_info": _read_device_info(runtime.driver, runtime.serial),
+            **run_low_voltage_three_pin_probe(
+                runtime.driver,
+                cfg=runtime.config,
+                mode=mode,
+                max_probe_voltage_v=max_probe_voltage_v,
+                max_probe_current_a=max_probe_current_a,
+                samples=samples,
+            ),
+        }
+    finally:
+        _disable_outputs(runtime.driver)
+        runtime.driver.close()
+
+
+def run_relay_matrix_pin_probe(
+    mode: DriverMode,
+    cfg: HwConfig,
+    *,
+    pins: list[str] | None = None,
+    max_probe_voltage_v: float = 1.2,
+    max_probe_current_a: float = 0.001,
+    samples: int = 512,
+):
+    runtime = build_runtime(mode, cfg)
+    try:
+        result = run_relay_matrix_pin_permutation_probe(
+            runtime.driver,
+            cfg=runtime.config,
+            mode=mode,
+            pins=pins,
+            max_probe_voltage_v=max_probe_voltage_v,
+            max_probe_current_a=max_probe_current_a,
+            samples=samples,
+        )
+        return {
+            "serial": runtime.serial,
+            "device_info": _read_device_info(runtime.driver, runtime.serial),
+            **result,
         }
     finally:
         _disable_outputs(runtime.driver)

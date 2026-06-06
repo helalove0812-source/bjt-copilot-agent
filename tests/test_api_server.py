@@ -156,6 +156,27 @@ def test_ai_chat_can_use_tool_calling_agent_mode(monkeypatch) -> None:
     assert result["memory"] == {"project": [], "user": []}
 
 
+def test_ai_chat_auto_routes_unknown_device_autonomy_to_tool_agent(monkeypatch) -> None:
+    monkeypatch.setenv("BJT_AI_MODE", "local")
+
+    status, result = call_ai_chat_handler(
+        {
+            "text": "这有个不知道型号的三脚器件，你自己搞清楚它是什么，并给我一份表征报告",
+            "mode": "simulation",
+            "context": {},
+            "ai_settings": {"provider": "local"},
+        }
+    )
+
+    assert status == 200
+    assert result["ok"] is True
+    assert result["intent"] == "tool_calling"
+    assert result["agent_mode"] == "tool_calling"
+    assert [item["name"] for item in result["tool_calls"]] == ["autonomous_unknown_device_report"]
+    assert "拓扑假设排序" in result["response"]
+    assert "relay_matrix_pin_probe" in str(result["tool_calls"][0]["result"]["topology_probe"]["probe_result"])
+
+
 def test_ai_chat_tool_calling_plan_request_does_not_run_simulation(monkeypatch) -> None:
     monkeypatch.setenv("BJT_AI_MODE", "local")
 

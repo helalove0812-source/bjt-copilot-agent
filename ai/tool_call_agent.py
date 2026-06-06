@@ -9,6 +9,7 @@ from typing import Any
 from core.types import HwConfig
 
 from ai.assistant import summarize_execution_with_ai, summarize_plan_with_ai
+from ai.experiment_summary import summarize_experiment_records
 from ai.llm_client import LLMUnavailable, chat_text
 from ai.prompt_layers import PromptLayers, make_volatile
 from ai.session_search import SessionSearchStore
@@ -96,6 +97,8 @@ class ToolCallingAgent:
             if decision.get("action") == "final":
                 final_response = str(decision.get("response") or "")
                 next_actions = [str(item) for item in decision.get("next_actions", []) if str(item).strip()]
+                if not final_response:
+                    final_response = summarize_experiment_records([record.to_dict() for record in records])
                 break
 
             tool_name = str(decision.get("tool") or "")
@@ -109,10 +112,14 @@ class ToolCallingAgent:
         plan = self.runtime.current_plan.to_dict() if self.runtime.current_plan else None
         execution = self.runtime.current_execution
         if not final_response:
-            final_response, summary_used_ai, summary_provider, summary_usage = self._summarize(text, plan, execution)
-            used_ai = used_ai or summary_used_ai
-            provider = _merge_provider(provider, summary_provider if summary_used_ai else "")
-            usage = _merge_usage(usage, summary_usage)
+            experiment_response = summarize_experiment_records([record.to_dict() for record in records])
+            if experiment_response:
+                final_response = experiment_response
+            else:
+                final_response, summary_used_ai, summary_provider, summary_usage = self._summarize(text, plan, execution)
+                used_ai = used_ai or summary_used_ai
+                provider = _merge_provider(provider, summary_provider if summary_used_ai else "")
+                usage = _merge_usage(usage, summary_usage)
 
         if not next_actions:
             next_actions = _default_next_actions(plan, execution)
@@ -211,8 +218,20 @@ def _local_decision(
     called = [record.name for record in records]
     model = _model_from_text_or_records(text, records)
     wants_execute = any(word in text for word in ("执行", "仿真", "运行", "跑一下", "开始"))
+    wants_adaptive = any(word in text for word in ("自适应", "主动布点", "表征", "研究这个器件", "研究这个管子", "characterize", "adaptive"))
+    wants_spice = any(word in text.lower() for word in ("spice", "digital twin", "model card", ".model")) or any(
+        word in text for word in ("数字孪生", "模型卡", "器件模型", "生成模型")
+    )
+    wants_residual_followup = any(word in text for word in ("残差", "补测", "下一步测什么", "继续测什么", "诊断补测")) or any(
+        word in text.lower() for word in ("residual", "followup", "follow-up")
+    )
+    wants_run_followup = wants_residual_followup and (
+        any(word in text for word in ("执行补测", "跑补测", "继续补测", "按补测计划测", "执行这些补测"))
+        or any(word in text.lower() for word in ("run followup", "execute followup", "run follow-up"))
+    )
+    wants_unknown_device = _wants_unknown_device_autonomy(text)
     plan_only = _wants_plan_only(text)
-    complex_task = wants_execute or any(word in text for word in ("完整", "全套", "然后", "并", "先", "再"))
+    complex_task = wants_execute or wants_adaptive or any(word in text for word in ("完整", "全套", "然后", "并", "先", "再"))
     wants_session = any(word in text for word in ("之前", "刚才", "当前", "历史", "日志", "结果", "上次", "已有", "会话"))
     has_task_graph = bool((task_graph or {}).get("subtasks"))
 
@@ -232,8 +251,62 @@ def _local_decision(
             "response": "",
             "next_actions": ["确认应用修改", "继续调整计划", "取消修改"],
         }
+    if wants_unknown_device and "autonomous_unknown_device_report" not in called:
+        return {
+            "action": "call_tool",
+            "tool": "autonomous_unknown_device_report",
+            "arguments": {
+                "mode": mode if mode in {"simulation", "hardware"} else "simulation",
+                "goal": text,
+                "allow_hardware": False,
+                "token_valid": True,
+                "characterization_iterations": 3,
+                "batch_size": 2,
+                "followup_budget": 3,
+            },
+        }
+    if wants_unknown_device and "autonomous_unknown_device_report" in called:
+        return {
+            "action": "final",
+            "response": "",
+            "next_actions": ["查看候选 pinout", "继续残差补测", "导出 SPICE 模型卡"],
+        }
     if complex_task and not has_task_graph and "delegate_task" not in called:
-        return _delegate_task_decision(text, wants_execute=wants_execute and not plan_only)
+        return _delegate_task_decision(text, wants_execute=(wants_execute or wants_adaptive) and not plan_only)
+    if wants_adaptive and current_plan and "run_adaptive_characterization" not in called:
+        return {
+            "action": "call_tool",
+            "tool": "run_adaptive_characterization",
+            "arguments": {
+                "mode": mode if mode in {"simulation", "hardware"} else "simulation",
+                "iterations": 3,
+                "batch_size": 2,
+                "allow_hardware": False,
+                "token_valid": True,
+            },
+        }
+    if wants_adaptive and "run_adaptive_characterization" in called:
+        if wants_spice and "extract_spice_twin" not in called:
+            return {"action": "call_tool", "tool": "extract_spice_twin", "arguments": {"include_model_card": True}}
+        if wants_run_followup and "run_residual_followup" not in called:
+            return {
+                "action": "call_tool",
+                "tool": "run_residual_followup",
+                "arguments": {"mode": mode if mode in {"simulation", "hardware"} else "simulation", "budget": 3, "allow_hardware": False, "token_valid": True},
+            }
+        if wants_run_followup and "run_residual_followup" in called:
+            return {
+                "action": "final",
+                "response": "",
+                "next_actions": ["查看补测残差变化", "继续补测", "导出模型卡"],
+            }
+        if wants_residual_followup and "plan_residual_followup" not in called:
+            return {"action": "call_tool", "tool": "plan_residual_followup", "arguments": {"budget": 4}}
+        return {
+            "action": "final",
+            "response": "",
+            "next_actions": ["查看 belief", "继续补测", "生成模型"],
+        }
     delegated = _decision_from_task_graph(text, mode, records, task_graph or {})
     if delegated:
         return delegated
@@ -245,6 +318,36 @@ def _local_decision(
             "response": _session_search_response(records),
             "next_actions": ["继续生成计划", "查看执行日志", "运行仿真"],
         }
+    if wants_spice and "extract_spice_twin" not in called:
+        return {"action": "call_tool", "tool": "extract_spice_twin", "arguments": {"include_model_card": True}}
+    if wants_run_followup and "run_residual_followup" not in called:
+        return {
+            "action": "call_tool",
+            "tool": "run_residual_followup",
+            "arguments": {"mode": mode if mode in {"simulation", "hardware"} else "simulation", "budget": 3, "allow_hardware": False, "token_valid": True},
+        }
+    if wants_run_followup and "run_residual_followup" in called:
+        return {
+            "action": "final",
+            "response": "",
+            "next_actions": ["查看补测残差变化", "继续补测", "导出模型卡"],
+        }
+    if wants_residual_followup and "plan_residual_followup" not in called:
+        return {"action": "call_tool", "tool": "plan_residual_followup", "arguments": {"budget": 4}}
+    if wants_spice and "extract_spice_twin" in called:
+        if wants_run_followup and "run_residual_followup" not in called:
+            return {
+                "action": "call_tool",
+                "tool": "run_residual_followup",
+                "arguments": {"mode": mode if mode in {"simulation", "hardware"} else "simulation", "budget": 3, "allow_hardware": False, "token_valid": True},
+            }
+        if wants_residual_followup and "plan_residual_followup" not in called:
+            return {"action": "call_tool", "tool": "plan_residual_followup", "arguments": {"budget": 4}}
+        return {
+            "action": "final",
+            "response": "",
+            "next_actions": ["复制模型卡", "查看残差诊断", "继续补测"],
+        }
     if "lookup_transistor" not in called:
         return {"action": "call_tool", "tool": "lookup_transistor", "arguments": {"model": model}}
     if "build_test_plan" not in called:
@@ -253,7 +356,7 @@ def _local_decision(
             "tool": "build_test_plan",
             "arguments": {
                 "model": model,
-                "goal": _goal_from_text(text),
+                "goal": "full" if wants_adaptive else _goal_from_text(text),
                 "depth": "standard",
                 "mode": mode if mode in {"simulation", "hardware"} else "simulation",
             },
@@ -306,6 +409,7 @@ def _tool_call_prompt_layers(
                 "复杂任务优先调用 delegate_task 生成子任务图，再按子任务建议调用具体工具。",
                 "如果还没有计划，通常先 lookup_transistor 或 build_test_plan。",
                 "如果已有计划且用户要求仿真，可以 evaluate_plan_safety 后 run_simulation。",
+                "危险或真实硬件工具应先用 dry_run=true 预演前置条件、安全合同和所需确认，再请求真实执行。",
             ],
             "response_schema": {
                 "action": "call_tool or final",
@@ -462,6 +566,21 @@ def _wants_plan_only(text: str) -> bool:
         word in lowered for word in ("simulate", "run", "execute")
     )
     return asks_for_plan and not asks_for_execution
+
+
+def _wants_unknown_device_autonomy(text: str) -> bool:
+    lowered = text.lower()
+    has_unknown_device = any(word in text for word in ("未知三脚", "不知道型号", "未知型号", "三脚器件", "三端器件", "不知道是什么"))
+    wants_autonomy = any(word in text for word in ("自己搞清楚", "自主", "端到端", "表征报告", "搞清楚它是什么", "判器件类型"))
+    return (has_unknown_device and wants_autonomy) or any(
+        phrase in lowered
+        for phrase in (
+            "unknown three-pin",
+            "unknown 3-pin",
+            "identify unknown device",
+            "autonomous characterization",
+        )
+    )
 
 
 def _wants_grid_refinement(text: str, context: dict[str, Any] | None = None) -> bool:

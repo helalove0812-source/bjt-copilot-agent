@@ -196,6 +196,41 @@ def _agent_mode_from_payload(payload: dict) -> str:
     return mode if mode in {"tool_calling", "classic"} else "classic"
 
 
+def _looks_like_unknown_device_autonomy_request(text: str) -> bool:
+    lowered = text.lower()
+    has_unknown_device = any(
+        word in text
+        for word in (
+            "未知三脚",
+            "不知道型号",
+            "未知型号",
+            "三脚器件",
+            "三端器件",
+            "不知道是什么",
+        )
+    )
+    wants_autonomy = any(
+        word in text
+        for word in (
+            "自己搞清楚",
+            "自主",
+            "端到端",
+            "表征报告",
+            "搞清楚它是什么",
+            "判器件类型",
+        )
+    )
+    return (has_unknown_device and wants_autonomy) or any(
+        phrase in lowered
+        for phrase in (
+            "unknown three-pin",
+            "unknown 3-pin",
+            "identify unknown device",
+            "autonomous characterization",
+        )
+    )
+
+
 def _execution_from_context(context: dict) -> dict | None:
     current_execution = context.get("current_execution")
     if isinstance(current_execution, dict):
@@ -1032,7 +1067,7 @@ class ApiHandler(BaseHTTPRequestHandler):
             context = payload.get("context") if isinstance(payload.get("context"), dict) else {}
             config = payload.get("config") if isinstance(payload.get("config"), dict) else {}
             state = _state_from_context(context)
-            if _agent_mode_from_payload(payload) == "tool_calling":
+            if _agent_mode_from_payload(payload) == "tool_calling" or _looks_like_unknown_device_autonomy_request(text):
                 agent = ToolCallingAgent(cfg=_hw_config(config), output_dir=Path("analysis_out/web"), context=context)
                 result = agent.run_turn(text, mode=mode if mode in {"simulation", "hardware"} else "simulation")
                 payload_out = result.to_dict()

@@ -179,6 +179,29 @@ class PyRDDriver:
     def disable_all(self) -> None:
         self.emergency_off()
 
+    def relay_matrix_available(self) -> bool:
+        return False
+
+    def relay_matrix_connect(self, source_pin: str, sink_pin: str) -> None:
+        del source_pin, sink_pin
+        raise NotImplementedError("当前 PyRD 硬件驱动未接入外部 relay matrix")
+
+    def relay_matrix_disconnect_all(self) -> None:
+        # The base PyRD device has no external relay matrix to reset.
+        return
+
+    def pin_pair_probe(
+        self,
+        source_pin: str,
+        sink_pin: str,
+        *,
+        voltage_v: float,
+        current_limit_a: float,
+        samples: int = 512,
+    ) -> dict[str, Any]:
+        del source_pin, sink_pin, voltage_v, current_limit_a, samples
+        raise NotImplementedError("当前 PyRD 硬件驱动未接入外部 relay matrix pin-pair probe")
+
     def device_info(self):
         self._require_connected()
         return {"model": self._model, "serial": self._serial}
